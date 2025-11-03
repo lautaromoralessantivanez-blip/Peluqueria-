@@ -445,34 +445,50 @@
     }
 
     // ================
-    // SUSCRIPCIÓN FIRESTORE (para admin) 👉 MODIFICADO
+    // SUSCRIPCIÓN FIRESTORE (para admin)  ✅ ARREGLADO
     // ================
     let unsubscribeTurnos = null;
     function suscribirTurnosDeFirestore(adminCode){
       if(!adminCode) return;
       if(unsubscribeTurnos){ unsubscribeTurnos(); }
-      // ahora escuchamos la subcolección propia de ese admin
       unsubscribeTurnos = db
         .collection("admins")
         .doc(adminCode)
         .collection("turnos")
         .onSnapshot((snap)=>{
+          // turnos que llegaron desde firestore
           const turnosFS = [];
           snap.forEach(doc=>{
             turnosFS.push(doc.data());
           });
-          // orden
-          turnosFS.sort((a,b)=>{
+
+          // turnos que ya tenía en local (pueden ser más porque son de antes de este cambio)
+          const turnosLocal = getTurnos();
+
+          // mezclo por fecha+hora
+          const mezcla = [...turnosLocal];
+          turnosFS.forEach(fst=>{
+            const idx = mezcla.findIndex(x => x.fecha === fst.fecha && x.hora === fst.hora);
+            if(idx >= 0){
+              mezcla[idx] = fst; // actualizo
+            } else {
+              mezcla.push(fst);  // agrego nuevo
+            }
+          });
+
+          // ordeno
+          mezcla.sort((a,b)=>{
             if(a.fecha===b.fecha){ return a.hora.localeCompare(b.hora); }
             return a.fecha.localeCompare(b.fecha);
           });
-          // guardo en local
-          saveTurnos(turnosFS);
-          // refresco si está viendo
+
+          // guardo
+          saveTurnos(mezcla);
+
+          // refresco vistas
           if(agendaFecha && agendaFecha.value){
             renderListaTurnos();
           }
-          // refresco horarios disponibles
           const fechaTurno = document.getElementById("fechaTurno");
           if(fechaTurno && fechaTurno.value){
             renderHorariosDisponibles(fechaTurno.value);
@@ -537,7 +553,6 @@
         horarios: getHorarios(),
         updated: new Date().toISOString()
       }, {merge:true});
-      // me suscribo
       suscribirTurnosDeFirestore(code);
       location.reload();
     });
@@ -871,7 +886,7 @@
     }
 
     // ====================
-    // Confirmar turno 👉 MODIFICADO
+    // Confirmar turno
     // ====================
     document.getElementById("confirmarTurno").addEventListener("click", async ()=>{
       const nombre = document.getElementById("clienteNombre").value.trim();
@@ -905,7 +920,7 @@
         adminCode: code || ""
       };
 
-      // guardo local (cliente o admin que toma)
+      // guardo local
       turnos.push(nuevo);
       turnos.sort((a,b)=>{
         if(a.fecha===b.fecha){ return a.hora.localeCompare(b.hora); }
@@ -923,10 +938,10 @@
       renderListaTurnos();
       notificarAdmin(nuevo);
 
-      // 🔥 subo a firestore general (por si lo usás en otro lado)
+      // root
       db.collection("turnos").add(nuevo).catch(e=>console.log("Error subiendo turno (root)", e));
 
-      // 🔥 y sobre todo: lo guardo en la carpeta del admin dueño del link → esto es lo que hace que LE APAREZCA AL INSTANTE
+      // subcolección del admin (para que llegue al panel al toque)
       if(code){
         const docId = `${fecha}_${horarioSeleccionado}`.replace(/:/g,"-");
         db.collection("admins")
