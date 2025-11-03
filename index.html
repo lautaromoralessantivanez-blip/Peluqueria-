@@ -94,10 +94,7 @@
     .btn-primary{background:var(--rojo);color:#fff;}
     .btn-primary:hover{filter:brightness(.93);}
     .btn-soft{background:rgba(8,160,209,.08);color:var(--celeste);}
-    .btn-danger{
-      background:rgba(214,40,40,.08);
-      color:var(--rojo);
-    }
+    .btn-danger{background:rgba(214,40,40,.08);color:var(--rojo);}
     .section-title{
       font-weight:600;
       margin:.8rem 0 .4rem;
@@ -195,6 +192,7 @@
       .inline-copy{flex-direction:column;align-items:stretch;}
     }
   </style>
+  <!-- Firebase (compat) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
@@ -208,6 +206,7 @@
   </header>
 
   <div class="container">
+    <!-- Registro admin -->
     <div id="registerPanel" class="panel">
       <h2 style="margin-top:0;font-size:1rem;">Registrar número administrador</h2>
       <p style="font-size:.82rem;color:#555;margin-bottom:.7rem;">
@@ -218,6 +217,7 @@
       <button class="btn btn-primary" style="margin-top:.6rem;" id="saveAdmin">Guardar como admin</button>
     </div>
 
+    <!-- App -->
     <div id="appPanel" class="panel hidden">
       <div id="tabs" class="tabs">
         <button class="tab-btn active" data-tab="tomar">Tomar turno</button>
@@ -225,6 +225,7 @@
         <button class="tab-btn" data-tab="ajustes" id="tabAjustes">Ajustes</button>
       </div>
 
+      <!-- TOMAR -->
       <div id="tab-tomar">
         <div class="row">
           <div class="col-6">
@@ -253,6 +254,7 @@
         <p id="linkWhats" style="font-size:.75rem;"></p>
       </div>
 
+      <!-- TURNOS -->
       <div id="tab-turnos" class="hidden">
         <h3 style="margin-top:0;font-size:1rem;">Agenda del día</h3>
         <label>Elegí fecha</label>
@@ -260,6 +262,7 @@
         <div id="listaTurnos"></div>
       </div>
 
+      <!-- AJUSTES -->
       <div id="tab-ajustes" class="hidden">
         <h3 style="margin-top:0;font-size:1rem;">Ajustes</h3>
         <p style="font-size:.7rem;color:#555;">Solo visible para admin.</p>
@@ -296,6 +299,7 @@
   </div>
 
   <script>
+    // Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyAk5Pn5YJAFbgQtpwjhkZ0MIJ3JtnwLd0M",
       authDomain: "peluqueria-eb0cf.firebaseapp.com",
@@ -305,27 +309,28 @@
       appId: "1:749771581273:web:a3cf588fa53d9b3aff4e48",
       measurementId: "G-JHSFYSB57V"
     };
-
     const appFB = firebase.initializeApp(firebaseConfig);
     const db = appFB.firestore();
 
+    // Storage
     const STORAGE_ADMIN = "pelu_admin_phone";
     const STORAGE_ADMIN_CODE = "pelu_admin_code";
     const STORAGE_SERVICIOS = "pelu_servicios";
     const STORAGE_HORARIOS = "pelu_horarios";
     const STORAGE_TURNOS = "pelu_turnos";
+
     const dias = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
 
     const params = new URLSearchParams(location.search);
     const isPublicLink = params.has("solo");
     const publicCode = params.get("code") || null;
+    const publicAdminParam = params.get("ap") || null; // 👈 viene codificado
 
+    // Admin phone y code en local
     function getAdminPhone(){ return localStorage.getItem(STORAGE_ADMIN); }
-    function setAdminPhone(phone){ localStorage.setItem(STORAGE_ADMIN, phone); }
-
+    function setAdminPhone(p){ localStorage.setItem(STORAGE_ADMIN, p); }
     function getAdminCode(){ return localStorage.getItem(STORAGE_ADMIN_CODE); }
-    function setAdminCode(code){ localStorage.setItem(STORAGE_ADMIN_CODE, code); }
-
+    function setAdminCode(c){ localStorage.setItem(STORAGE_ADMIN_CODE, c); }
     function generateAdminCode(){
       return "ADM-" + Math.random().toString(36).substring(2,8).toUpperCase();
     }
@@ -334,12 +339,12 @@
       const s = localStorage.getItem(STORAGE_SERVICIOS);
       if(s){ return JSON.parse(s); }
       return [
-        {nombre:"Corte caballero", precio: "5000"},
-        {nombre:"Corte dama", precio: "7000"},
-        {nombre:"Color", precio: "9000"},
+        {nombre:"Corte caballero", precio:"5000"},
+        {nombre:"Corte dama", precio:"7000"},
+        {nombre:"Color", precio:"9000"},
       ];
     }
-    function saveServicios(servs){ localStorage.setItem(STORAGE_SERVICIOS, JSON.stringify(servs)); }
+    function saveServicios(s){ localStorage.setItem(STORAGE_SERVICIOS, JSON.stringify(s)); }
 
     function getHorarios(){
       const h = localStorage.getItem(STORAGE_HORARIOS);
@@ -374,25 +379,36 @@
     let adminCodeVal = getAdminCode();
     let isAdmin = false;
 
-    // 🔴 ESTE es el teléfono real del admin dueño del link público
+    // 🔴 ESTE es el número del admin dueño del link público (el que debe recibir el WhatsApp)
     let publicAdminPhone = null;
 
-    async function loadPublicConfigByCode(code){
-      const doc = await db.collection("admins").doc(code).get();
-      if(doc.exists){
-        const data = doc.data();
-        if(data.phone){
-          publicAdminPhone = data.phone;   // 👈 lo guardo en variable especial
-        }
-        if(data.servicios){
-          saveServicios(data.servicios);
-        }
-        if(data.horarios){
-          saveHorarios(data.horarios);
-        }
+    // 1) primero intentamos decodificarlo del parámetro "ap"
+    if(publicAdminParam){
+      try{
+        publicAdminPhone = atob(decodeURIComponent(publicAdminParam));
+      }catch(e){
+        publicAdminPhone = null;
       }
     }
 
+    // 2) si no vino por la URL, probamos traerlo de Firestore usando el code
+    async function loadPublicConfigByCode(code){
+      try{
+        const doc = await db.collection("admins").doc(code).get();
+        if(doc.exists){
+          const data = doc.data();
+          if(!publicAdminPhone && data.phone){
+            publicAdminPhone = data.phone; // 👈 solo si no vino por URL
+          }
+          if(data.servicios){ saveServicios(data.servicios); }
+          if(data.horarios){ saveHorarios(data.horarios); }
+        }
+      }catch(e){
+        console.log("No pude leer admin por code", e);
+      }
+    }
+
+    // MODO PÚBLICO
     if(isPublicLink){
       (async ()=>{
         if(publicCode){
@@ -404,12 +420,14 @@
         isAdmin = false;
         document.getElementById("tabTurnos").style.display = "none";
         document.getElementById("tabAjustes").style.display = "none";
+
         renderServiciosSelect();
         const todayIso = new Date().toISOString().split("T")[0];
         document.getElementById("fechaTurno").value = todayIso;
         renderHorariosDisponibles(todayIso);
       })();
     } else {
+      // MODO ADMIN
       if(!adminPhoneVal){
         registerPanel.classList.remove("hidden");
         appPanel.classList.add("hidden");
@@ -422,6 +440,7 @@
       }
     }
 
+    // Guardar admin
     document.getElementById("saveAdmin").addEventListener("click", async ()=>{
       const val = document.getElementById("adminPhone").value.trim();
       if(!val){ alert("Ingresá un número"); return; }
@@ -431,6 +450,7 @@
         code = generateAdminCode();
         setAdminCode(code);
       }
+      // guardamos en firestore (opcional)
       await db.collection("admins").doc(code).set({
         phone: val,
         servicios: getServicios(),
@@ -440,10 +460,11 @@
       location.reload();
     });
 
+    // cerrar sesión
     const cerrarSesionBtn = document.getElementById("cerrarSesion");
     if(cerrarSesionBtn){
       cerrarSesionBtn.addEventListener("click", ()=>{
-        if(confirm("¿Cerrar sesión de admin y volver a registrar otro número?")){
+        if(confirm("¿Cerrar sesión de admin?")){
           localStorage.removeItem(STORAGE_ADMIN);
           localStorage.removeItem(STORAGE_ADMIN_CODE);
           location.reload();
@@ -451,6 +472,7 @@
       });
     }
 
+    // Tabs
     const tabButtons = document.querySelectorAll(".tab-btn");
     const tabTomar = document.getElementById("tab-tomar");
     const tabTurnos = document.getElementById("tab-turnos");
@@ -460,8 +482,8 @@
 
     if(!isPublicLink){
       if(!isAdmin){
-        tabTurnosBtn.style.display = "none";
-        tabAjustesBtn.style.display = "none";
+        if(tabTurnosBtn) tabTurnosBtn.style.display = "none";
+        if(tabAjustesBtn) tabAjustesBtn.style.display = "none";
       }
     }
 
@@ -500,27 +522,33 @@
       });
     }
 
+    // Link público (modo admin)
     if(!isPublicLink){
-      let code = getAdminCode() || "ADM-NO-CODE";
       const base = location.origin + location.pathname;
+      let code = getAdminCode() || "ADM-NO-CODE";
+      const phone = getAdminPhone() || "";
+      // 👇 CODIFICAMOS el teléfono en base64 y lo ponemos en la URL
+      const phoneB64 = encodeURIComponent(btoa(phone));
       if(publicLinkInput){
-        publicLinkInput.value = `${base}?solo=1&code=${encodeURIComponent(code)}`;
+        publicLinkInput.value = `${base}?solo=1&code=${encodeURIComponent(code)}&ap=${phoneB64}`;
       }
       if(copyLinkBtn){
         copyLinkBtn.addEventListener("click", async ()=>{
           try{
             await navigator.clipboard.writeText(publicLinkInput.value);
             copyLinkBtn.textContent = "✅ Copiado";
-            setTimeout(()=>copyLinkBtn.textContent="📋 Copiar", 1800);
+            setTimeout(()=>copyLinkBtn.textContent="📋 Copiar", 1600);
           }catch(e){
-            alert("Copiá el link manualmente.");
+            alert("Copiá el link manualmente");
           }
         });
       }
     }
 
+    // Servicios
     const serviciosList = document.getElementById("serviciosList");
     const servicioSelect = document.getElementById("servicioSelect");
+
     function renderServiciosAjustes(){
       const servicios = getServicios();
       serviciosList.innerHTML = "";
@@ -533,7 +561,7 @@
           <button data-idx="${idx}" class="btn btn-soft" type="button">🗑</button>
         `;
         serviciosList.appendChild(wrap);
-        wrap.querySelector("button").addEventListener("click",()=>{
+        wrap.querySelector("button").addEventListener("click", ()=>{
           const arr = getServicios();
           arr.splice(idx,1);
           saveServicios(arr);
@@ -558,7 +586,7 @@
     function renderServiciosSelect(){
       const servicios = getServicios();
       servicioSelect.innerHTML = "";
-      servicios.forEach((s)=>{
+      servicios.forEach(s=>{
         const opt = document.createElement("option");
         opt.value = s.nombre;
         opt.textContent = s.nombre + " ($" + s.precio + ")";
@@ -575,6 +603,7 @@
       syncAdminConfigToFirestore();
     });
 
+    // Horarios
     const horariosPorDia = document.getElementById("horariosPorDia");
     const fechaTurno = document.getElementById("fechaTurno");
 
@@ -643,9 +672,10 @@
     document.getElementById("guardarAjustes").addEventListener("click", async ()=>{
       await syncAdminConfigToFirestore();
       document.getElementById("msgAjustes").textContent = "Ajustes guardados ✔️";
-      setTimeout(()=>{ document.getElementById("msgAjustes").textContent=""; },2500);
+      setTimeout(()=>{ document.getElementById("msgAjustes").textContent=""; }, 2000);
     });
 
+    // Horarios disponibles
     const horariosContainer = document.getElementById("horariosContainer");
     let horarioSeleccionado = null;
 
@@ -691,8 +721,10 @@
           start += 30;
         }
       }
+
       const turnos = getTurnos().filter(t=>t.fecha===fechaStr);
       const usados = turnos.map(t=>t.hora);
+
       if(bloques.length===0){
         horariosContainer.innerHTML = `<div class="empty">No hay bloques configurados</div>`;
         return;
@@ -709,7 +741,6 @@
         btn.style.cursor="pointer";
         btn.style.fontWeight="600";
         btn.style.color="#333";
-        btn.style.transition=".15s";
         btn.style.display="inline-block";
         if(usados.includes(b)){
           btn.style.background="rgba(214,40,40,.1)";
@@ -718,7 +749,7 @@
           btn.disabled = true;
         } else {
           btn.addEventListener("click", ()=>{
-            horariosContainer.querySelectorAll("button").forEach(x=>{x.style.background="#fff";});
+            horariosContainer.querySelectorAll("button").forEach(x=>x.style.background="#fff");
             btn.style.background="rgba(8,160,209,.1)";
             horarioSeleccionado = b;
           });
@@ -728,11 +759,12 @@
     }
 
     if(fechaTurno){
-      fechaTurno.addEventListener("change", (e)=>{
+      fechaTurno.addEventListener("change", e=>{
         renderHorariosDisponibles(e.target.value);
       });
     }
 
+    // mostrar link manual al admin (modo admin)
     function notificarAdmin(turno){
       const admin = getAdminPhone();
       if(!admin) return;
@@ -740,15 +772,19 @@
       const limpio = admin.replace(/[^0-9+]/g,"");
       const url = `https://wa.me/${limpio}?text=${texto}`;
       const linkWhats = document.getElementById("linkWhats");
-      linkWhats.innerHTML = `📲 <a href="${url}" target="_blank" style="color:var(--celeste);text-decoration:none;">Enviar aviso por WhatsApp al admin</a>`;
+      if(linkWhats){
+        linkWhats.innerHTML = `📲 <a href="${url}" target="_blank" style="color:var(--celeste);text-decoration:none;">Enviar aviso por WhatsApp al admin</a>`;
+      }
     }
 
+    // Confirmar turno
     document.getElementById("confirmarTurno").addEventListener("click", ()=>{
       const nombre = document.getElementById("clienteNombre").value.trim();
       const tel = document.getElementById("clienteTel").value.trim();
       const fecha = document.getElementById("fechaTurno").value;
       const servicio = document.getElementById("servicioSelect").value;
       const msg = document.getElementById("msgTurno");
+
       if(!nombre){ msg.textContent="Poné el nombre del cliente."; msg.style.color="red"; return; }
       if(!fecha){ msg.textContent="Elegí la fecha."; msg.style.color="red"; return; }
       if(!horarioSeleccionado){ msg.textContent="Elegí un horario disponible."; msg.style.color="red"; return; }
@@ -760,7 +796,7 @@
         return;
       }
 
-      const adminLocal = getAdminPhone();        // admin del panel (si estoy logueado)
+      const adminLocal = getAdminPhone();   // solo para modo admin
       const code = isPublicLink ? publicCode : getAdminCode();
 
       const nuevo = {
@@ -774,6 +810,7 @@
         adminCode: code || ""
       };
 
+      // guardo local
       turnos.push(nuevo);
       turnos.sort((a,b)=>{
         if(a.fecha===b.fecha){ return a.hora.localeCompare(b.hora); }
@@ -784,16 +821,17 @@
       msg.style.color="green";
       msg.textContent = "Turno guardado ✔️";
 
-      document.getElementById("clienteNombre").value="";
-      document.getElementById("clienteTel").value="";
+      document.getElementById("clienteNombre").value = "";
+      document.getElementById("clienteTel").value = "";
 
       renderHorariosDisponibles(fecha);
       renderListaTurnos();
       notificarAdmin(nuevo);
 
-      db.collection("turnos").add(nuevo).catch(err=>console.log("Error subiendo turno a Firestore", err));
+      // guardo en firestore
+      db.collection("turnos").add(nuevo).catch(e=>console.log("Error subiendo turno", e));
 
-      // ✅ SOLO si es link público y SÍ tenemos el número del admin dueño
+      // ✅ ACÁ: solo si es link público y SÍ tenemos el número del admin dueño del link
       if(isPublicLink && publicAdminPhone){
         const limpio = publicAdminPhone.replace(/[^0-9+]/g,"");
         const texto = encodeURIComponent(
@@ -803,9 +841,12 @@
       }
     });
 
+    // Lista de turnos (admin)
     const listaTurnos = document.getElementById("listaTurnos");
     const agendaFecha = document.getElementById("agendaFecha");
-    if(agendaFecha) agendaFecha.addEventListener("change", ()=>renderListaTurnos());
+    if(agendaFecha){
+      agendaFecha.addEventListener("change", ()=>renderListaTurnos());
+    }
 
     function eliminarTurno(turnoObj){
       let turnos = getTurnos();
@@ -820,17 +861,14 @@
       if(fechaTurno && fechaTurno.value === turnoObj.fecha){
         renderHorariosDisponibles(turnoObj.fecha);
       }
-
+      // intento borrar en firestore
       db.collection("turnos")
         .where("fecha","==", turnoObj.fecha)
         .where("hora","==", turnoObj.hora)
         .where("nombre","==", turnoObj.nombre)
-        .get()
-        .then((snap)=>{
-          snap.forEach(doc=>{
-            doc.ref.delete().catch(e=>console.log("No se pudo borrar doc", e));
-          });
-        }).catch(e=>console.log("Error buscando para borrar", e));
+        .get().then(snap=>{
+          snap.forEach(doc=>doc.ref.delete().catch(()=>{}));
+        });
     }
 
     function renderListaTurnos(){
@@ -843,7 +881,7 @@
         listaTurnos.innerHTML = `<div class="empty">No hay turnos para esta fecha.</div>`;
         return;
       }
-      turnos.forEach((t)=>{
+      turnos.forEach(t=>{
         const card = document.createElement("div");
         card.className = "turno-card";
         card.innerHTML = `
@@ -854,8 +892,8 @@
           </div>
           <button class="btn btn-danger" type="button">🗑 Eliminar</button>
         `;
-        const btnDel = card.querySelector("button");
-        btnDel.addEventListener("click", ()=>{
+        const btn = card.querySelector("button");
+        btn.addEventListener("click", ()=>{
           if(confirm("¿Eliminar este turno?")){
             eliminarTurno(t);
           }
@@ -864,6 +902,7 @@
       });
     }
 
+    // init
     renderServiciosAjustes();
     renderServiciosSelect();
     renderHorariosAjustes();
