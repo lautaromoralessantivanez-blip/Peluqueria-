@@ -1,0 +1,690 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Peluquería — Turnos</title>
+  <style>
+    :root{
+      --bg:#ffffff;
+      --rojo:#d62828;
+      --celeste:#08a0d1;
+      --gris:#f5f5f5;
+      --texto:#1d1d1d;
+      --radius:16px;
+    }
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+    body{margin:0;background:var(--bg);color:var(--texto);}
+    header{
+      background:linear-gradient(120deg, var(--rojo), var(--celeste));
+      color:#fff;
+      padding:1rem 1.3rem 1.1rem;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:1rem;
+    }
+    header h1{margin:0;font-size:1.3rem;font-weight:700;}
+    header small{display:block;font-size:.75rem;opacity:.85;}
+    .admin-badge{
+      background:rgba(255,255,255,.15);
+      padding:.25rem .6rem;
+      border-radius:999px;
+      font-size:.7rem;
+      display:flex;
+      align-items:center;
+      gap:.25rem;
+    }
+    .container{max-width:1080px;margin:1.2rem auto;padding:0 1rem 1.8rem;}
+    .panel{
+      background:#fff;
+      border:1px solid #e5e5e5;
+      border-radius:var(--radius);
+      padding:1rem;
+      box-shadow:0 14px 40px rgba(0,0,0,.03);
+    }
+    .tabs{
+      display:flex;
+      gap:.5rem;
+      margin-bottom:1rem;
+      border-bottom:1px solid #eee;
+    }
+    .tab-btn{
+      border:none;
+      background:transparent;
+      padding:.6rem 1rem .85rem;
+      font-weight:600;
+      color:#777;
+      cursor:pointer;
+      border-bottom:3px solid transparent;
+      transition:.2s;
+    }
+    .tab-btn.active{
+      color:var(--rojo);
+      border-color:var(--rojo);
+      background:rgba(214,40,40,.04);
+      border-top-left-radius:8px;
+      border-top-right-radius:8px;
+    }
+    .hidden{display:none;}
+    label{display:block;font-size:.78rem;margin-bottom:.35rem;}
+    input,select,textarea{
+      width:100%;
+      padding:.55rem .55rem;
+      border:1px solid #dcdcdc;
+      border-radius:10px;
+      font-size:.85rem;
+      background:#fff;
+    }
+    input:focus,select:focus,textarea:focus{outline:2px solid rgba(8,160,209,.18);border-color:rgba(8,160,209,.6);}
+    .row{display:flex;gap:.6rem;flex-wrap:wrap;}
+    .col-6{flex:1 1 200px;}
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:.3rem;
+      border:none;
+      border-radius:999px;
+      padding:.5rem 1.1rem;
+      font-weight:600;
+      cursor:pointer;
+      transition:.15s;
+    }
+    .btn-primary{background:var(--rojo);color:#fff;}
+    .btn-primary:hover{filter:brightness(.93);}
+    .btn-soft{background:rgba(8,160,209,.08);color:var(--celeste);}
+    .section-title{
+      font-weight:600;
+      margin:.8rem 0 .4rem;
+      display:flex;
+      align-items:center;
+      gap:.35rem;
+    }
+    .pill{background:rgba(214,40,40,.12);color:var(--rojo);font-size:.65rem;padding:.12rem .4rem;border-radius:999px;}
+    .turno-card{
+      border:1px solid #eee;
+      border-radius:12px;
+      padding:.6rem .75rem .5rem;
+      margin-bottom:.45rem;
+      display:flex;
+      justify-content:space-between;
+      gap:.6rem;
+      background:#fff;
+    }
+    .turno-info small{display:block;font-size:.7rem;color:#666;}
+    .hora-badge{
+      background:rgba(8,160,209,.12);
+      color:var(--celeste);
+      font-weight:600;
+      padding:.2rem .6rem;
+      border-radius:999px;
+      font-size:.75rem;
+      display:inline-flex;
+      align-items:center;
+      gap:.2rem;
+    }
+    .empty{
+      padding:.8rem;
+      background:rgba(0,0,0,.02);
+      border:1px dashed #ddd;
+      border-radius:12px;
+      text-align:center;
+      font-size:.78rem;
+      color:#777;
+    }
+    .service-item{
+      display:flex;
+      gap:.4rem;
+      margin-bottom:.4rem;
+    }
+    .service-item input{flex:1;}
+    .day-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+      gap:.6rem;
+      margin-top:.45rem;
+    }
+    .day-box{
+      border:1px solid #eee;
+      border-radius:10px;
+      padding:.5rem .6rem .6rem;
+      background:#fafafa;
+    }
+    .day-box h4{margin:0;font-size:.7rem;letter-spacing:.03em;text-transform:uppercase;color:#444;display:flex;justify-content:space-between;align-items:center;}
+    .day-box small{font-size:.65rem;color:#777;}
+    .switch{
+      appearance:none;
+      width:34px;
+      height:18px;
+      background:#ccc;
+      border-radius:999px;
+      position:relative;
+      cursor:pointer;
+      outline:none;
+    }
+    .switch:checked{background:var(--celeste);}
+    .switch:before{
+      content:"";
+      width:14px;height:14px;
+      background:#fff;
+      border-radius:50%;
+      position:absolute;
+      top:2px;left:2px;
+      transition:.15s;
+    }
+    .switch:checked:before{left:18px;}
+    @media (max-width:720px){
+      .tabs{flex-wrap:wrap;}
+      header{flex-direction:column;align-items:flex-start;}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Peluquería — Turnos</h1>
+      <small id="adminPhoneLabel">Registrá el número para administrar</small>
+    </div>
+    <div id="adminBadge" class="admin-badge" style="display:none;">👑 Admin</div>
+  </header>
+
+  <div class="container">
+    <!-- Registro inicial de admin -->
+    <div id="registerPanel" class="panel">
+      <h2 style="margin-top:0;font-size:1rem;">Registrar número administrador</h2>
+      <p style="font-size:.82rem;color:#555;margin-bottom:.7rem;">
+        Este será el número donde recibirás las notificaciones (mostradas en pantalla). Solo se registra una vez.
+      </p>
+      <label for="adminPhone">Número (WhatsApp / Teléfono)</label>
+      <input type="tel" id="adminPhone" placeholder="+54 264 ...">
+      <button class="btn btn-primary" style="margin-top:.6rem;" id="saveAdmin">Guardar como admin</button>
+    </div>
+
+    <!-- App principal -->
+    <div id="appPanel" class="panel hidden">
+      <div id="tabs" class="tabs">
+        <button class="tab-btn active" data-tab="tomar">Tomar turno</button>
+        <button class="tab-btn" data-tab="turnos" id="tabTurnos">Turnos</button>
+        <button class="tab-btn" data-tab="ajustes" id="tabAjustes">Ajustes</button>
+      </div>
+
+      <!-- TAB TOMAR -->
+      <div id="tab-tomar">
+        <div class="row">
+          <div class="col-6">
+            <label>Nombre del cliente</label>
+            <input id="clienteNombre" type="text" placeholder="Ej: Ana Pérez">
+          </div>
+          <div class="col-6">
+            <label>Teléfono del cliente (opcional)</label>
+            <input id="clienteTel" type="tel" placeholder="+54...">
+          </div>
+        </div>
+        <div class="row" style="margin-top:.5rem;">
+          <div class="col-6">
+            <label>Fecha</label>
+            <input id="fechaTurno" type="date">
+          </div>
+          <div class="col-6">
+            <label>Servicio</label>
+            <select id="servicioSelect"></select>
+          </div>
+        </div>
+        <div class="section-title" style="margin-top:1rem;">Horarios disponibles <span class="pill">30 min</span></div>
+        <div id="horariosContainer" class="row" style="gap:.4rem;"></div>
+        <button id="confirmarTurno" class="btn btn-primary" style="margin-top:1rem;">Confirmar turno</button>
+        <p id="msgTurno" style="margin-top:.7rem;font-size:.8rem;color:#333;"></p>
+        <p id="linkWhats" style="font-size:.75rem;"></p>
+      </div>
+
+      <!-- TAB TURNOS -->
+      <div id="tab-turnos" class="hidden">
+        <h3 style="margin-top:0;font-size:1rem;">Agenda del día</h3>
+        <label>Elegí fecha</label>
+        <input type="date" id="agendaFecha" style="max-width:200px;margin-bottom:.7rem;">
+        <div id="listaTurnos"></div>
+      </div>
+
+      <!-- TAB AJUSTES -->
+      <div id="tab-ajustes" class="hidden">
+        <h3 style="margin-top:0;font-size:1rem;">Ajustes</h3>
+        <p style="font-size:.7rem;color:#555;">Solo visible para admin.</p>
+
+        <div class="section-title">Servicios</div>
+        <div id="serviciosList"></div>
+        <button id="agregarServicio" class="btn btn-soft" style="margin-top:.3rem;">+ Agregar servicio</button>
+
+        <div class="section-title" style="margin-top:1rem;">Horarios por día</div>
+        <p style="font-size:.7rem;color:#555;">Si un día está vacío o deshabilitado, no se muestran turnos ese día.</p>
+        <div id="horariosPorDia" class="day-grid"></div>
+
+        <button id="guardarAjustes" class="btn btn-primary" style="margin-top:1rem;">Guardar ajustes</button>
+        <p id="msgAjustes" style="font-size:.75rem;margin-top:.5rem;color:green;"></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ---- helpers storage ----
+    const STORAGE_ADMIN = "pelu_admin_phone";
+    const STORAGE_SERVICIOS = "pelu_servicios";
+    const STORAGE_HORARIOS = "pelu_horarios";
+    const STORAGE_TURNOS = "pelu_turnos";
+
+    const dias = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+
+    function getAdminPhone(){
+      return localStorage.getItem(STORAGE_ADMIN);
+    }
+    function setAdminPhone(phone){
+      localStorage.setItem(STORAGE_ADMIN, phone);
+    }
+
+    function getServicios(){
+      const s = localStorage.getItem(STORAGE_SERVICIOS);
+      if(s){ return JSON.parse(s); }
+      return [
+        {nombre:"Corte caballero", precio: "5000"},
+        {nombre:"Corte dama", precio: "7000"},
+        {nombre:"Color", precio: "9000"},
+      ];
+    }
+    function saveServicios(servs){
+      localStorage.setItem(STORAGE_SERVICIOS, JSON.stringify(servs));
+    }
+
+    function getHorarios(){
+      const h = localStorage.getItem(STORAGE_HORARIOS);
+      if(h){ return JSON.parse(h); }
+      const base = {};
+      dias.forEach((d,i)=>{
+        if(i<6){
+          base[i] = {enabled:true, maniana:{inicio:"09:00",fin:"13:00"}, tarde:{inicio:"16:00",fin:"20:00"}};
+        } else {
+          base[i] = {enabled:false, maniana:{inicio:"",fin:""}, tarde:{inicio:"",fin:""}};
+        }
+      });
+      return base;
+    }
+    function saveHorarios(h){
+      localStorage.setItem(STORAGE_HORARIOS, JSON.stringify(h));
+    }
+
+    function getTurnos(){
+      const t = localStorage.getItem(STORAGE_TURNOS);
+      if(t){ return JSON.parse(t); }
+      return [];
+    }
+    function saveTurnos(t){
+      localStorage.setItem(STORAGE_TURNOS, JSON.stringify(t));
+    }
+
+    // ---- inicialización ----
+    const registerPanel = document.getElementById("registerPanel");
+    const appPanel = document.getElementById("appPanel");
+    const adminBadge = document.getElementById("adminBadge");
+    const adminPhoneLabel = document.getElementById("adminPhoneLabel");
+
+    const adminPhoneVal = getAdminPhone();
+    let isAdmin = false;
+
+    if(!adminPhoneVal){
+      registerPanel.classList.remove("hidden");
+      appPanel.classList.add("hidden");
+    } else {
+      registerPanel.classList.add("hidden");
+      appPanel.classList.remove("hidden");
+      adminBadge.style.display = "flex";
+      adminPhoneLabel.textContent = "Admin registrado: " + adminPhoneVal;
+      isAdmin = true;
+    }
+
+    document.getElementById("saveAdmin").addEventListener("click", ()=>{
+      const val = document.getElementById("adminPhone").value.trim();
+      if(!val){ alert("Ingresá un número"); return; }
+      setAdminPhone(val);
+      location.reload();
+    });
+
+    // ---- Tabs ----
+    const tabButtons = document.querySelectorAll(".tab-btn");
+    const tabTomar = document.getElementById("tab-tomar");
+    const tabTurnos = document.getElementById("tab-turnos");
+    const tabAjustes = document.getElementById("tab-ajustes");
+    const tabTurnosBtn = document.getElementById("tabTurnos");
+    const tabAjustesBtn = document.getElementById("tabAjustes");
+
+    if(!isAdmin){
+      tabTurnosBtn.style.display = "none";
+      tabAjustesBtn.style.display = "none";
+    }
+
+    tabButtons.forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        tabButtons.forEach(b=>b.classList.remove("active"));
+        btn.classList.add("active");
+        const tab = btn.dataset.tab;
+        tabTomar.classList.add("hidden");
+        tabTurnos.classList.add("hidden");
+        tabAjustes.classList.add("hidden");
+        if(tab==="tomar") tabTomar.classList.remove("hidden");
+        if(tab==="turnos") { tabTurnos.classList.remove("hidden"); renderListaTurnos(); }
+        if(tab==="ajustes") { tabAjustes.classList.remove("hidden"); }
+      });
+    });
+
+    // ---- Servicios en ajustes ----
+    const serviciosList = document.getElementById("serviciosList");
+    const servicioSelect = document.getElementById("servicioSelect");
+    function renderServiciosAjustes(){
+      const servicios = getServicios();
+      serviciosList.innerHTML = "";
+      servicios.forEach((s,idx)=>{
+        const wrap = document.createElement("div");
+        wrap.className = "service-item";
+        wrap.innerHTML = `
+          <input data-idx="${idx}" data-type="nombre" value="${s.nombre}" placeholder="Servicio">
+          <input data-idx="${idx}" data-type="precio" value="${s.precio}" style="max-width:120px;" placeholder="$">
+          <button data-idx="${idx}" class="btn btn-soft" type="button">🗑</button>
+        `;
+        serviciosList.appendChild(wrap);
+        wrap.querySelector("button").addEventListener("click",()=>{
+          const arr = getServicios();
+          arr.splice(idx,1);
+          saveServicios(arr);
+          renderServiciosAjustes();
+          renderServiciosSelect();
+        });
+        wrap.querySelectorAll("input").forEach(inp=>{
+          inp.addEventListener("input", ()=>{
+            const arr = getServicios();
+            const i = parseInt(inp.dataset.idx);
+            const type = inp.dataset.type;
+            arr[i][type] = inp.value;
+            saveServicios(arr);
+            renderServiciosSelect();
+          });
+        });
+      });
+    }
+    function renderServiciosSelect(){
+      const servicios = getServicios();
+      servicioSelect.innerHTML = "";
+      servicios.forEach((s)=>{
+        const opt = document.createElement("option");
+        opt.value = s.nombre;
+        opt.textContent = s.nombre + " ($" + s.precio + ")";
+        servicioSelect.appendChild(opt);
+      });
+    }
+    document.getElementById("agregarServicio").addEventListener("click", ()=>{
+      const arr = getServicios();
+      arr.push({nombre:"Nuevo servicio", precio:"0"});
+      saveServicios(arr);
+      renderServiciosAjustes();
+      renderServiciosSelect();
+    });
+
+    // ---- Horarios por día en ajustes ----
+    const horariosPorDia = document.getElementById("horariosPorDia");
+    function renderHorariosAjustes(){
+      const h = getHorarios();
+      horariosPorDia.innerHTML = "";
+      dias.forEach((dia,idx)=>{
+        const config = h[idx];
+        const box = document.createElement("div");
+        box.className = "day-box";
+        box.innerHTML = `
+          <h4>${dia} <input type="checkbox" class="switch" ${config.enabled?"checked":""} data-dia="${idx}"></h4>
+          <small>Mañana</small>
+          <div class="row" style="margin-bottom:.3rem;">
+            <div class="col-6"><input type="time" data-dia="${idx}" data-part="man_inicio" value="${config.maniana.inicio||""}"></div>
+            <div class="col-6"><input type="time" data-dia="${idx}" data-part="man_fin" value="${config.maniana.fin||""}"></div>
+          </div>
+          <small>Tarde</small>
+          <div class="row">
+            <div class="col-6"><input type="time" data-dia="${idx}" data-part="tar_inicio" value="${config.tarde.inicio||""}"></div>
+            <div class="col-6"><input type="time" data-dia="${idx}" data-part="tar_fin" value="${config.tarde.fin||""}"></div>
+          </div>
+        `;
+        horariosPorDia.appendChild(box);
+      });
+
+      horariosPorDia.querySelectorAll("input[type=checkbox]").forEach(ch=>{
+        ch.addEventListener("change", ()=>{
+          const idx = ch.dataset.dia;
+          const data = getHorarios();
+          data[idx].enabled = ch.checked;
+          saveHorarios(data);
+        });
+      });
+      horariosPorDia.querySelectorAll("input[type=time]").forEach(inp=>{
+        inp.addEventListener("input", ()=>{
+          const idx = inp.dataset.dia;
+          const part = inp.dataset.part;
+          const data = getHorarios();
+          if(part==="man_inicio") data[idx].maniana.inicio = inp.value;
+          if(part==="man_fin") data[idx].maniana.fin = inp.value;
+          if(part==="tar_inicio") data[idx].tarde.inicio = inp.value;
+          if(part==="tar_fin") data[idx].tarde.fin = inp.value;
+          saveHorarios(data);
+        });
+      });
+    }
+
+    document.getElementById("guardarAjustes").addEventListener("click", ()=>{
+      document.getElementById("msgAjustes").textContent = "Ajustes guardados ✔️";
+      setTimeout(()=>{ document.getElementById("msgAjustes").textContent=""; },2500);
+    });
+
+    // ---- Generar horarios disponibles (30 min) ----
+    const fechaTurno = document.getElementById("fechaTurno");
+    const horariosContainer = document.getElementById("horariosContainer");
+    let horarioSeleccionado = null;
+
+    function setTodayAsDefault(){
+      const today = new Date();
+      const iso = today.toISOString().split("T")[0];
+      fechaTurno.value = iso;
+      document.getElementById("agendaFecha").value = iso;
+      renderHorariosDisponibles(iso);
+      renderListaTurnos();
+    }
+
+    function timeToMinutes(t){
+      const [h,m] = t.split(":").map(Number);
+      return h*60+m;
+    }
+    function minutesToTime(m){
+      const h = Math.floor(m/60);
+      const min = m%60;
+      return String(h).padStart(2,"0") + ":" + String(min).padStart(2,"0");
+    }
+
+    function renderHorariosDisponibles(fechaStr){
+      horariosContainer.innerHTML = "";
+      horarioSeleccionado = null;
+      const date = new Date(fechaStr+"T00:00:00");
+      const dayIdx = (date.getDay()+6)%7;
+      const horarios = getHorarios();
+      const conf = horarios[dayIdx];
+      if(!conf || !conf.enabled){
+        horariosContainer.innerHTML = `<div class="empty">Este día no hay horarios habilitados</div>`;
+        return;
+      }
+      let bloques = [];
+      if(conf.maniana.inicio && conf.maniana.fin){
+        let start = timeToMinutes(conf.maniana.inicio);
+        const end = timeToMinutes(conf.maniana.fin);
+        while(start+30 <= end){
+          bloques.push(minutesToTime(start));
+          start += 30;
+        }
+      }
+      if(conf.tarde.inicio && conf.tarde.fin){
+        let start = timeToMinutes(conf.tarde.inicio);
+        const end = timeToMinutes(conf.tarde.fin);
+        while(start+30 <= end){
+          bloques.push(minutesToTime(start));
+          start += 30;
+        }
+      }
+      const turnos = getTurnos().filter(t=>t.fecha===fechaStr);
+      const usados = turnos.map(t=>t.hora);
+      if(bloques.length===0){
+        horariosContainer.innerHTML = `<div class="empty">No hay bloques configurados</div>`;
+        return;
+      }
+      bloques.forEach(b=>{
+        const btn = document.createElement("button");
+        btn.type="button";
+        btn.textContent = b;
+        btn.style.minWidth="80px";
+        btn.style.border="1px solid #ddd";
+        btn.style.borderRadius="10px";
+        btn.style.padding=".35rem .6rem";
+        btn.style.background="#fff";
+        btn.style.cursor="pointer";
+        btn.style.fontWeight="600";
+        btn.style.color="#333";
+        btn.style.transition=".15s";
+        btn.style.display="inline-block";
+        if(usados.includes(b)){
+          btn.style.background="rgba(214,40,40,.1)";
+          btn.style.color="var(--rojo)";
+          btn.textContent = b + " — OCUPADO";
+          btn.disabled = true;
+        } else {
+          btn.addEventListener("click", ()=>{
+            horariosContainer.querySelectorAll("button").forEach(x=>{x.style.background="#fff";});
+            btn.style.background="rgba(8,160,209,.1)";
+            horarioSeleccionado = b;
+          });
+        }
+        horariosContainer.appendChild(btn);
+      });
+    }
+
+    fechaTurno.addEventListener("change", (e)=>{
+      renderHorariosDisponibles(e.target.value);
+    });
+
+    // ---- Notificar admin (browser + WhatsApp) ----
+    function notificarAdmin(turno){
+      const admin = getAdminPhone();
+      if(!admin) return;
+      // 1) Notification API
+      if ("Notification" in window) {
+        if (Notification.permission === "granted") {
+          new Notification("Nuevo turno 💈", {
+            body: turno.fecha + " " + turno.hora + " — " + turno.nombre + " ("+turno.servicio+")"
+          });
+        } else if (Notification.permission !== "denied") {
+          Notification.requestPermission().then((perm)=>{
+            if(perm === "granted"){
+              new Notification("Nuevo turno 💈", {
+                body: turno.fecha + " " + turno.hora + " — " + turno.nombre + " ("+turno.servicio+")"
+              });
+            }
+          });
+        }
+      }
+      // 2) WhatsApp link
+      const texto = `Nuevo turno en la peluquería:%0ACliente: ${encodeURIComponent(turno.nombre)}%0AFecha: ${turno.fecha}%0AHora: ${turno.hora}%0AServicio: ${encodeURIComponent(turno.servicio)}%0ATel cliente: ${turno.tel || "sin teléfono"}`;
+      const limpio = admin.replace(/[^0-9+]/g,"");
+      const url = `https://wa.me/${limpio}?text=${texto}`;
+      const linkWhats = document.getElementById("linkWhats");
+      linkWhats.innerHTML = `📲 <a href="${url}" target="_blank" style="color:var(--celeste);text-decoration:none;">Enviar aviso por WhatsApp al admin</a>`;
+    }
+
+    // ---- Confirmar turno ----
+    document.getElementById("confirmarTurno").addEventListener("click", ()=>{
+      const nombre = document.getElementById("clienteNombre").value.trim();
+      const tel = document.getElementById("clienteTel").value.trim();
+      const fecha = document.getElementById("fechaTurno").value;
+      const servicio = document.getElementById("servicioSelect").value;
+      const msg = document.getElementById("msgTurno");
+      if(!nombre){ msg.textContent="Poné el nombre del cliente."; msg.style.color="red"; return; }
+      if(!fecha){ msg.textContent="Elegí la fecha."; msg.style.color="red"; return; }
+      if(!horarioSeleccionado){ msg.textContent="Elegí un horario disponible."; msg.style.color="red"; return; }
+      const turnos = getTurnos();
+      if(turnos.some(t=>t.fecha===fecha && t.hora===horarioSeleccionado)){
+        msg.textContent="Ese horario ya fue tomado. Elegí otro.";
+        msg.style.color="red";
+        return;
+      }
+      const admin = getAdminPhone();
+      const nuevo = {
+        fecha,
+        hora: horarioSeleccionado,
+        nombre,
+        tel,
+        servicio,
+        creado: new Date().toISOString(),
+        notificarA: admin
+      };
+      turnos.push(nuevo);
+      turnos.sort((a,b)=>{
+        if(a.fecha===b.fecha){
+          return a.hora.localeCompare(b.hora);
+        }
+        return a.fecha.localeCompare(b.fecha);
+      });
+      saveTurnos(turnos);
+      msg.style.color="green";
+      msg.textContent = "Turno guardado ✔️. Notificando al admin...";
+      document.getElementById("clienteNombre").value="";
+      document.getElementById("clienteTel").value="";
+      renderHorariosDisponibles(fecha);
+      renderListaTurnos();
+      // 👉 acá notificamos
+      notificarAdmin(nuevo);
+    });
+
+    // ---- Lista de turnos (admin) ----
+    const listaTurnos = document.getElementById("listaTurnos");
+    const agendaFecha = document.getElementById("agendaFecha");
+    agendaFecha.addEventListener("change", ()=>renderListaTurnos());
+
+    function renderListaTurnos(){
+      if(!isAdmin) return;
+      const fecha = agendaFecha.value;
+      const turnos = getTurnos().filter(t=>t.fecha===fecha);
+      listaTurnos.innerHTML = "";
+      if(turnos.length===0){
+        listaTurnos.innerHTML = `<div class="empty">No hay turnos para esta fecha.</div>`;
+        return;
+      }
+      turnos.forEach((t,idx)=>{
+        const card = document.createElement("div");
+        card.className = "turno-card";
+        card.innerHTML = `
+          <div class="turno-info">
+            <span class="hora-badge">🕒 ${t.hora}</span>
+            <strong>${t.nombre}</strong>
+            <small>${t.servicio}${t.tel?(" • " + t.tel):""}</small>
+          </div>
+          <div>
+            <button class="btn btn-soft" data-idx="${idx}">🗑</button>
+          </div>
+        `;
+        listaTurnos.appendChild(card);
+        card.querySelector("button").addEventListener("click", ()=>{
+          const todos = getTurnos();
+          const filtrados = todos.filter(tt=>!(tt.fecha===t.fecha && tt.hora===t.hora && tt.nombre===t.nombre));
+          saveTurnos(filtrados);
+          renderListaTurnos();
+          renderHorariosDisponibles(fecha);
+        });
+      });
+    }
+
+    // ---- Init render ----
+    renderServiciosAjustes();
+    renderServiciosSelect();
+    renderHorariosAjustes();
+    setTodayAsDefault();
+  </script>
+</body>
+</html>
