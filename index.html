@@ -1,4 +1,3 @@
-<!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8"/>
@@ -135,26 +134,89 @@
       font-size:.78rem;
       color:#777;
     }
-    .service-item{display:flex;gap:.4rem;margin-bottom:.4rem;}
+    .service-item{
+      display:flex;
+      gap:.4rem;
+      margin-bottom:.4rem;
+    }
     .service-item input{flex:1;}
-    .day-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.6rem;margin-top:.45rem;}
-    .day-box{border:1px solid #eee;border-radius:10px;padding:.5rem .6rem .6rem;background:#fafafa;}
+    .day-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+      gap:.6rem;
+      margin-top:.45rem;
+    }
+    .day-box{
+      border:1px solid #eee;
+      border-radius:10px;
+      padding:.5rem .6rem .6rem;
+      background:#fafafa;
+    }
     .day-box h4{margin:0;font-size:.7rem;letter-spacing:.03em;text-transform:uppercase;color:#444;display:flex;justify-content:space-between;align-items:center;}
     .day-box small{font-size:.65rem;color:#777;}
-    .switch{appearance:none;width:34px;height:18px;background:#ccc;border-radius:999px;position:relative;cursor:pointer;outline:none;}
+    .switch{
+      appearance:none;
+      width:34px;
+      height:18px;
+      background:#ccc;
+      border-radius:999px;
+      position:relative;
+      cursor:pointer;
+      outline:none;
+    }
     .switch:checked{background:var(--celeste);}
-    .switch:before{content:"";width:14px;height:14px;background:#fff;border-radius:50%;position:absolute;top:2px;left:2px;transition:.15s;}
+    .switch:before{
+      content:"";
+      width:14px;height:14px;
+      background:#fff;
+      border-radius:50%;
+      position:absolute;
+      top:2px;left:2px;
+      transition:.15s;
+    }
     .switch:checked:before{left:18px;}
     a.link-inline{color:var(--celeste);text-decoration:none;font-size:.78rem;}
     a.link-inline:hover{text-decoration:underline;}
     .small-input{width:100%;font-size:.7rem;padding:.4rem .5rem;border-radius:8px;border:1px solid #ddd;background:#fdfdfd;}
-    .inline-copy{display:flex;gap:.4rem;align-items:center;max-width:340px;}
-    .tag-disabled{background:rgba(214,40,40,.1);color:var(--rojo);padding:.25rem .55rem;border-radius:999px;font-size:.7rem;display:inline-flex;gap:.5rem;align-items:center;margin:.15rem .3rem .15rem 0;}
-    .row-inline{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;}
-    .no-attend-banner{
-      background:#ffe5e5;border:2px solid #ff9d9d;border-radius:14px;padding:1rem .8rem;text-align:center;font-weight:700;color:#a00000;font-size:1.05rem;margin-bottom:.8rem;
+    .inline-copy{
+      display:flex;
+      gap:.4rem;
+      align-items:center;
+      max-width:340px;
     }
-    .no-attend-banner small{display:block;font-weight:400;font-size:.7rem;color:#c22;margin-top:.35rem;}
+    .tag-disabled{
+      background:rgba(214,40,40,.1);
+      color:var(--rojo);
+      padding:.25rem .55rem;
+      border-radius:999px;
+      font-size:.7rem;
+      display:inline-flex;
+      gap:.5rem;
+      align-items:center;
+      margin:.15rem .3rem .15rem 0;
+    }
+    .row-inline{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;}
+
+    /* 👇 cartel grande para días deshabilitados */
+    .no-attend-banner{
+      background:#ffe5e5;
+      border:2px solid #ff9d9d;
+      border-radius:14px;
+      padding:1rem .8rem;
+      text-align:center;
+      font-weight:700;
+      color:#a00000;
+      font-size:1.05rem;
+      margin-bottom:.8rem;
+    }
+    .no-attend-banner small{
+      display:block;
+      font-weight:400;
+      font-size:.7rem;
+      color:#c22;
+      margin-top:.35rem;
+    }
+
     @media (max-width:720px){
       .tabs{flex-wrap:wrap;}
       header{flex-direction:column;align-items:flex-start;}
@@ -238,6 +300,7 @@
         <h3 style="margin-top:0;font-size:1rem;">Ajustes</h3>
         <p style="font-size:.7rem;color:#555;">Solo visible para admin.</p>
 
+        <!-- ✅ Switch usar horarios por semana -->
         <div class="row-inline" style="margin-bottom:.6rem;">
           <label style="margin-bottom:0;font-weight:600;">Usar horarios por semana</label>
           <label style="display:flex;align-items:center;gap:.35rem;">
@@ -247,6 +310,7 @@
         </div>
 
         <div class="section-title">Servicios</div>
+        <!-- ✅ fila de botones arriba -->
         <div class="row-inline" style="margin-bottom:.4rem;">
           <button id="agregarServicio" class="btn btn-soft" type="button">+ Agregar servicio</button>
           <button id="guardarServicios" class="btn btn-soft" type="button">💾 Guardar precios</button>
@@ -258,6 +322,7 @@
         <p style="font-size:.7rem;color:#555;">Si un día está vacío o deshabilitado, no se muestran turnos ese día.</p>
         <div id="horariosPorDia" class="day-grid"></div>
 
+        <!-- ✅ Días deshabilitados -->
         <div class="section-title" style="margin-top:1rem;">Días deshabilitados (calendario)</div>
         <div class="row-inline" style="margin-bottom:.4rem;">
           <input type="date" id="disabledDayPicker" style="max-width:200px;">
@@ -318,17 +383,19 @@
     const dias = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
 
     // ====================
-    // URL PARAMS
+    // URL PARAMS (formato nuevo chico + compatibilidad)
     // ====================
     const params = new URLSearchParams(location.search);
-    const tokenParam = params.get("t");
-    const isPublicLink = !!tokenParam;
+    const tokenParam = params.get("t"); // nuevo formato corto
+    const isPublicLink = params.has("solo") || !!tokenParam;
     const oldPublicCode = params.get("code") || null;
     const oldPublicAdminParam = params.get("ap") || null;
 
+    // vars del link público
     let publicCode = null;
     let publicAdminPhone = null;
 
+    // decodificar formato nuevo
     if(tokenParam){
       try{
         const decoded = JSON.parse(atob(tokenParam));
@@ -339,6 +406,7 @@
         publicAdminPhone = null;
       }
     } else {
+      // compatibilidad vieja
       publicCode = oldPublicCode;
       if(oldPublicAdminParam){
         try{ publicAdminPhone = atob(decodeURIComponent(oldPublicAdminParam)); }catch(e){ publicAdminPhone = null; }
@@ -352,33 +420,51 @@
     function setAdminPhone(p){ localStorage.setItem(STORAGE_ADMIN, p); }
     function getAdminCode(){ return localStorage.getItem(STORAGE_ADMIN_CODE); }
     function setAdminCode(c){ localStorage.setItem(STORAGE_ADMIN_CODE, c); }
-    function generateAdminCode(){ return "ADM-" + Math.random().toString(36).substring(2,8).toUpperCase(); }
+    function generateAdminCode(){
+      return "ADM-" + Math.random().toString(36).substring(2,8).toUpperCase();
+    }
 
+    // disabled days
     function getDisabledDays(){
       const d = localStorage.getItem(STORAGE_DISABLED_DAYS);
       if(d){ return JSON.parse(d); }
       return [];
     }
-    function saveDisabledDays(d){ localStorage.setItem(STORAGE_DISABLED_DAYS, JSON.stringify(d)); }
+    function saveDisabledDays(d){
+      localStorage.setItem(STORAGE_DISABLED_DAYS, JSON.stringify(d));
+    }
 
-    function getUseWeekly(){ const v = localStorage.getItem(STORAGE_USE_WEEKLY); if(v===null) return true; return v==="1"; }
-    function setUseWeekly(val){ localStorage.setItem(STORAGE_USE_WEEKLY, val ? "1" : "0"); }
+    // usar semanal
+    function getUseWeekly(){
+      const v = localStorage.getItem(STORAGE_USE_WEEKLY);
+      if(v===null) return true;
+      return v==="1";
+    }
+    function setUseWeekly(val){
+      localStorage.setItem(STORAGE_USE_WEEKLY, val ? "1" : "0");
+    }
 
     // ====================
-    // TURNOS POR ADMIN (local cache)
+    // TURNOS POR ADMIN (local)
     // ====================
     function getTurnosStorageKey(){
-      if(isPublicLink && publicCode){ return `${STORAGE_TURNOS_BASE}_${publicCode}`; }
+      if(isPublicLink && publicCode){
+        return `${STORAGE_TURNOS_BASE}_${publicCode}`;
+      }
       const myCode = getAdminCode();
-      if(myCode){ return `${STORAGE_TURNOS_BASE}_${myCode}`; }
+      if(myCode){
+        return `${STORAGE_TURNOS_BASE}_${myCode}`;
+      }
       return STORAGE_TURNOS_BASE;
     }
+
     function getTurnos(){
       const key = getTurnosStorageKey();
       const t = localStorage.getItem(key);
       if(t){ return JSON.parse(t); }
       return [];
     }
+
     function saveTurnos(t){
       const key = getTurnosStorageKey();
       localStorage.setItem(key, JSON.stringify(t));
@@ -434,67 +520,66 @@
     let adminCodeVal = getAdminCode();
     let isAdmin = false;
 
-    // ====================
-    // 🔄 SUSCRIPCIÓN CONFIG (soluciona “HOY NO ATIENDO” diferente)
-    // ====================
-    let unsubscribeConfig = null;
-    function suscribirConfigDeFirestore(adminCode){
-      if(!adminCode) return;
-      if(unsubscribeConfig) unsubscribeConfig();
-      unsubscribeConfig = db.collection("admins").doc(adminCode).onSnapshot(doc=>{
-        if(!doc.exists) return;
-        const data = doc.data() || {};
-        if(data.servicios){ saveServicios(data.servicios); renderServiciosSelect(); renderServiciosAjustes(); }
-        if(data.horarios){ saveHorarios(data.horarios); renderHorariosAjustes(); }
-        if(Array.isArray(data.disabledDays)){ saveDisabledDays(data.disabledDays); renderDisabledDays(); }
-        if(typeof data.useWeekly === "boolean"){ setUseWeekly(data.useWeekly); if(useWeeklyChk){ useWeeklyChk.checked = data.useWeekly; } }
-
-        // refrescar vistas actuales
-        const fSel = document.getElementById("fechaTurno")?.value;
-        if(fSel){ renderHorariosDisponibles(fSel); }
-        if(!isPublicLink && agendaFecha?.value){ renderListaTurnos(); }
-      }, err=>console.log("Error snapshot config", err));
-    }
-
-    // 1) Cargar config pública una vez (fallback) — opcional
+    // 2) si no hubo tel del público, lo busco en Firestore
     async function loadPublicConfigByCode(code){
       try{
         const doc = await db.collection("admins").doc(code).get();
         if(doc.exists){
           const data = doc.data();
-          if(!publicAdminPhone && data.phone){ publicAdminPhone = data.phone; }
+          if(!publicAdminPhone && data.phone){
+            publicAdminPhone = data.phone;
+          }
           if(data.servicios){ saveServicios(data.servicios); }
           if(data.horarios){ saveHorarios(data.horarios); }
           if(Array.isArray(data.disabledDays)){ saveDisabledDays(data.disabledDays); }
           if(typeof data.useWeekly === "boolean"){ setUseWeekly(data.useWeekly); }
         }
-      }catch(e){ console.log("No pude leer admin por code", e); }
+      }catch(e){
+        console.log("No pude leer admin por code", e);
+      }
     }
 
     // ================
-    // 🔄 SUSCRIPCIÓN TURNOS (ya tenías, mantiene “OCUPADO” en vivo)
+    // SUSCRIPCIÓN FIRESTORE
     // ================
     let unsubscribeTurnos = null;
     function suscribirTurnosDeFirestore(adminCode){
       if(!adminCode) return;
       if(unsubscribeTurnos){ unsubscribeTurnos(); }
-      unsubscribeTurnos = db.collection("admins").doc(adminCode).collection("turnos")
+      unsubscribeTurnos = db
+        .collection("admins")
+        .doc(adminCode)
+        .collection("turnos")
         .onSnapshot((snap)=>{
           const turnosFS = [];
-          snap.forEach(doc=>turnosFS.push(doc.data()));
+          snap.forEach(doc=>{
+            turnosFS.push(doc.data());
+          });
           const turnosLocal = getTurnos();
           const mezcla = [...turnosLocal];
           turnosFS.forEach(fst=>{
             const idx = mezcla.findIndex(x => x.fecha === fst.fecha && x.hora === fst.hora);
-            if(idx >= 0){ mezcla[idx] = fst; } else { mezcla.push(fst); }
+            if(idx >= 0){
+              mezcla[idx] = fst;
+            } else {
+              mezcla.push(fst);
+            }
           });
-          mezcla.sort((a,b)=> (a.fecha===b.fecha ? a.hora.localeCompare(b.hora) : a.fecha.localeCompare(b.fecha)));
+          mezcla.sort((a,b)=>{
+            if(a.fecha===b.fecha){ return a.hora.localeCompare(b.hora); }
+            return a.fecha.localeCompare(b.fecha);
+          });
           saveTurnos(mezcla);
-
-          if(agendaFecha && agendaFecha.value){ renderListaTurnos(); }
-          const fSel = document.getElementById("fechaTurno")?.value;
-          if(fSel){ renderHorariosDisponibles(fSel); }
-        }, err=>console.log("Error escuchando turnos", err));
+          if(agendaFecha && agendaFecha.value){
+            renderListaTurnos();
+          }
+          const fechaTurno = document.getElementById("fechaTurno");
+          if(fechaTurno && fechaTurno.value){
+            renderHorariosDisponibles(fechaTurno.value);
+          }
+        }, (err)=>{
+          console.log("Error escuchando turnos", err);
+        });
     }
 
     // ====================
@@ -504,8 +589,8 @@
       (async ()=>{
         if(publicCode){
           await loadPublicConfigByCode(publicCode);
-          suscribirConfigDeFirestore(publicCode);   // 👈 nuevo: config en vivo
-          suscribirTurnosDeFirestore(publicCode);   // ya estaba
+          // 👇 IMPORTANTE: los clientes que abren el link también escuchan los turnos de ese admin
+          suscribirTurnosDeFirestore(publicCode);
         }
         registerPanel.classList.add("hidden");
         appPanel.classList.remove("hidden");
@@ -531,7 +616,6 @@
         adminPhoneLabel.textContent = "Admin registrado: " + adminPhoneVal;
         isAdmin = true;
         if(adminCodeVal){
-          suscribirConfigDeFirestore(adminCodeVal); // 👈 nuevo: config en vivo
           suscribirTurnosDeFirestore(adminCodeVal);
         }
       }
@@ -557,7 +641,6 @@
         useWeekly: getUseWeekly(),
         updated: new Date().toISOString()
       }, {merge:true});
-      suscribirConfigDeFirestore(code);
       suscribirTurnosDeFirestore(code);
       location.reload();
     });
@@ -598,9 +681,18 @@
       tabTomar.classList.add("hidden");
       tabTurnosDiv.classList.add("hidden");
       tabAjustes.classList.add("hidden");
-      if(nombre==="tomar"){ document.querySelector('[data-tab="tomar"]').classList.add("active"); tabTomar.classList.remove("hidden"); }
-      if(nombre==="turnos"){ document.querySelector('[data-tab="turnos"]').classList.add("active"); tabTurnosDiv.classList.remove("hidden"); }
-      if(nombre==="ajustes"){ document.querySelector('[data-tab="ajustes"]').classList.add("active"); tabAjustes.classList.remove("hidden"); }
+      if(nombre==="tomar"){
+        document.querySelector('[data-tab="tomar"]').classList.add("active");
+        tabTomar.classList.remove("hidden");
+      }
+      if(nombre==="turnos"){
+        document.querySelector('[data-tab="turnos"]').classList.add("active");
+        tabTurnosDiv.classList.remove("hidden");
+      }
+      if(nombre==="ajustes"){
+        document.querySelector('[data-tab="ajustes"]').classList.add("active");
+        tabAjustes.classList.remove("hidden");
+      }
     }
 
     tabButtons.forEach(btn=>{
@@ -628,14 +720,18 @@
       const phone = getAdminPhone() || "";
       const tokenObj = {c: code, p: phone};
       const token = btoa(JSON.stringify(tokenObj));
-      if(publicLinkInput){ publicLinkInput.value = `${base}?t=${encodeURIComponent(token)}`; }
+      if(publicLinkInput){
+        publicLinkInput.value = `${base}?t=${encodeURIComponent(token)}`;
+      }
       if(copyLinkBtn){
         copyLinkBtn.addEventListener("click", async ()=>{
           try{
             await navigator.clipboard.writeText(publicLinkInput.value);
             copyLinkBtn.textContent = "✅ Copiado";
             setTimeout(()=>copyLinkBtn.textContent="📋 Copiar", 1600);
-          }catch(e){ alert("Copiá el link manualmente"); }
+          }catch(e){
+            alert("Copiá el link manualmente");
+          }
         });
       }
     }
@@ -680,6 +776,7 @@
       });
     }
 
+    // ✅ nuevo botón "Guardar precios"
     if(guardarServiciosBtn){
       guardarServiciosBtn.addEventListener("click", async ()=>{
         await syncAdminConfigToFirestore();
@@ -764,6 +861,7 @@
       });
     }
 
+    // ✅ dias deshabilitados UI
     function renderDisabledDays(){
       const arr = getDisabledDays();
       disabledDaysList.innerHTML = "";
@@ -790,13 +888,16 @@
         const val = disabledDayPicker.value;
         if(!val) return;
         const arr = getDisabledDays();
-        if(!arr.includes(val)){ arr.push(val); }
+        if(!arr.includes(val)){
+          arr.push(val);
+        }
         saveDisabledDays(arr);
         renderDisabledDays();
         syncAdminConfigToFirestore();
       });
     }
 
+    // ✅ switch usar semanal
     if(useWeeklyChk){
       useWeeklyChk.checked = getUseWeekly();
       useWeeklyChk.addEventListener("change", ()=>{
@@ -852,6 +953,7 @@
 
       const disabledDays = getDisabledDays();
 
+      // 👇 SI EL DÍA ESTÁ DESHABILITADO → cartel grande
       if(disabledDays.includes(fechaStr)){
         horariosContainer.innerHTML = `
           <div class="no-attend-banner">
@@ -885,12 +987,18 @@
       if(conf.maniana.inicio && conf.maniana.fin){
         let start = timeToMinutes(conf.maniana.inicio);
         const end = timeToMinutes(conf.maniana.fin);
-        while(start+30 <= end){ bloques.push(minutesToTime(start)); start += 30; }
+        while(start+30 <= end){
+          bloques.push(minutesToTime(start));
+          start += 30;
+        }
       }
       if(conf.tarde.inicio && conf.tarde.fin){
         let start = timeToMinutes(conf.tarde.inicio);
         const end = timeToMinutes(conf.tarde.fin);
-        while(start+30 <= end){ bloques.push(minutesToTime(start)); start += 30; }
+        while(start+30 <= end){
+          bloques.push(minutesToTime(start));
+          start += 30;
+        }
       }
       const turnos = getTurnos().filter(t=>t.fecha===fechaStr);
       const usados = turnos.map(t=>t.hora);
@@ -950,7 +1058,7 @@
     }
 
     // ====================
-    // ✅ Confirmar turno con TRANSACCIÓN (evita dobles)
+    // Confirmar turno
     // ====================
     document.getElementById("confirmarTurno").addEventListener("click", async ()=>{
       const nombre = document.getElementById("clienteNombre").value.trim();
@@ -962,16 +1070,31 @@
       if(!nombre){ msg.textContent="Poné el nombre del cliente."; msg.style.color="red"; return; }
       if(!fecha){ msg.textContent="Elegí la fecha."; msg.style.color="red"; return; }
 
+      // no dejar si está deshabilitado
       if(getDisabledDays().includes(fecha)){
-        msg.textContent="Ese día está deshabilitado."; msg.style.color="red"; return;
+        msg.textContent="Ese día está deshabilitado.";
+        msg.style.color="red";
+        return;
       }
+
       if(!getUseWeekly()){
-        msg.textContent="La agenda está desactivada."; msg.style.color="red"; return;
+        msg.textContent="La agenda está desactivada.";
+        msg.style.color="red";
+        return;
       }
+
       if(!horarioSeleccionado){ msg.textContent="Elegí un horario disponible."; msg.style.color="red"; return; }
 
+      const turnos = getTurnos();
+      if(turnos.some(t=>t.fecha===fecha && t.hora===horarioSeleccionado)){
+        msg.textContent="Ese horario ya fue tomado. Elegí otro.";
+        msg.style.color="red";
+        return;
+      }
+
+      const adminLocal = getAdminPhone();   // panel
       const code = isPublicLink ? publicCode : getAdminCode();
-      const adminLocal = getAdminPhone();
+
       const nuevo = {
         fecha,
         hora: horarioSeleccionado,
@@ -983,67 +1106,51 @@
         adminCode: code || ""
       };
 
-      if(!code){
-        msg.textContent = "No hay código de administrador asociado."; msg.style.color="red"; return;
+      // guardo local
+      turnos.push(nuevo);
+      turnos.sort((a,b)=>{
+        if(a.fecha===b.fecha){ return a.hora.localeCompare(b.hora); }
+        return a.fecha.localeCompare(b.fecha);
+      });
+      saveTurnos(turnos);
+
+      msg.style.color="green";
+      msg.textContent = "Turno guardado ✔️";
+
+      document.getElementById("clienteNombre").value = "";
+      document.getElementById("clienteTel").value = "";
+
+      renderHorariosDisponibles(fecha);
+      renderListaTurnos();
+      notificarAdmin(nuevo);
+
+      // root
+      db.collection("turnos").add(nuevo).catch(e=>console.log("Error subiendo turno (root)", e));
+
+      // subcolección del admin
+      if(code){
+        const docId = `${fecha}_${horarioSeleccionado}`.replace(/:/g,"-");
+        db.collection("admins")
+          .doc(code)
+          .collection("turnos")
+          .doc(docId)
+          .set(nuevo)
+          .catch(e=>console.log("Error subiendo turno al admin", e));
       }
 
-      // DOC ID único por fecha+hora
-      const docId = `${fecha}_${horarioSeleccionado}`.replace(/:/g,"-");
-      const adminTurnoRef = db.collection("admins").doc(code).collection("turnos").doc(docId);
-
-      try{
-        await db.runTransaction(async (tx)=>{
-          const snap = await tx.get(adminTurnoRef);
-          if(snap.exists){
-            throw new Error("ocupado");
-          }
-          tx.set(adminTurnoRef, nuevo);
-          // opcional: espejo simple en /turnos (no transaccional, solo para consultas globales)
-          const rootRef = db.collection("turnos").doc();
-          tx.set(rootRef, nuevo);
-        });
-
-        // Éxito → actualizar cache local y UI
-        const turnos = getTurnos();
-        turnos.push(nuevo);
-        turnos.sort((a,b)=> (a.fecha===b.fecha ? a.hora.localeCompare(b.hora) : a.fecha.localeCompare(b.fecha)));
-        saveTurnos(turnos);
-
-        msg.style.color="green";
-        msg.textContent = "Turno guardado ✔️";
-        document.getElementById("clienteNombre").value = "";
-        document.getElementById("clienteTel").value = "";
-
-        renderHorariosDisponibles(fecha);
-        renderListaTurnos();
-        notificarAdmin(nuevo);
-
-        // si es público → abrir WhatsApp del admin dueño
-        if(isPublicLink && publicAdminPhone){
-          const limpio = publicAdminPhone.replace(/[^0-9+]/g,"");
-          const texto = encodeURIComponent(
-            `Nuevo turno en la peluquería:\nCliente: ${nuevo.nombre}\nFecha: ${nuevo.fecha}\nHora: ${nuevo.hora}\nServicio: ${nuevo.servicio}\nTel cliente: ${nuevo.tel || "sin teléfono"}`
-          );
-          window.location.href = `https://wa.me/${limpio}?text=${texto}`;
-        }
-      }catch(e){
-        if(e && e.message === "ocupado"){
-          msg.style.color="red";
-          msg.textContent = "Ese horario acaba de ser tomado. Elegí otro.";
-          // refrescar para mostrar el bloqueo en pantalla
-          renderHorariosDisponibles(fecha);
-        }else{
-          msg.style.color="red";
-          msg.textContent = "Error guardando el turno. Probá nuevamente.";
-          console.log(e);
-        }
+      // si es público → abrir WhatsApp del admin dueño
+      if(isPublicLink && publicAdminPhone){
+        const limpio = publicAdminPhone.replace(/[^0-9+]/g,"");
+        const texto = encodeURIComponent(
+          `Nuevo turno en la peluquería:\nCliente: ${nuevo.nombre}\nFecha: ${nuevo.fecha}\nHora: ${nuevo.hora}\nServicio: ${nuevo.servicio}\nTel cliente: ${nuevo.tel || "sin teléfono"}`
+        );
+        window.location.href = `https://wa.me/${limpio}?text=${texto}`;
       }
     });
 
     // ====================
     // Lista Turnos (ADMIN)
     // ====================
-    const listaTurnosEl = document.getElementById("listaTurnos");
     if(agendaFecha){
       agendaFecha.addEventListener("change", ()=>renderListaTurnos());
     }
@@ -1061,13 +1168,20 @@
         .where("fecha","==", turnoObj.fecha)
         .where("hora","==", turnoObj.hora)
         .where("adminCode","==", turnoObj.adminCode || "")
-        .get().then(snap=>{ snap.forEach(doc=>doc.ref.delete().catch(()=>{})); });
+        .get().then(snap=>{
+          snap.forEach(doc=>doc.ref.delete().catch(()=>{}));
+        });
 
       // borrar en subcolección del admin
       const adminCode = getAdminCode();
       if(adminCode){
         const docId = `${turnoObj.fecha}_${turnoObj.hora}`.replace(/:/g,"-");
-        db.collection("admins").doc(adminCode).collection("turnos").doc(docId).delete().catch(()=>{});
+        db.collection("admins")
+          .doc(adminCode)
+          .collection("turnos")
+          .doc(docId)
+          .delete()
+          .catch(()=>{});
       }
     }
 
@@ -1076,9 +1190,9 @@
       if(!isAdmin) return;
       const fecha = agendaFecha.value;
       const turnos = getTurnos().filter(t=>t.fecha===fecha);
-      listaTurnosEl.innerHTML = "";
+      listaTurnos.innerHTML = "";
       if(turnos.length===0){
-        listaTurnosEl.innerHTML = `<div class="empty">No hay turnos para esta fecha.</div>`;
+        listaTurnos.innerHTML = `<div class="empty">No hay turnos para esta fecha.</div>`;
         return;
       }
       turnos.forEach(t=>{
@@ -1098,19 +1212,18 @@
             eliminarTurno(t);
           }
         });
-        listaTurnosEl.appendChild(card);
+        listaTurnos.appendChild(card);
       });
     }
 
     // ====================
     // INIT UI
     // ====================
-    function renderServiciosSelect(){ /* redefinida arriba, se mantiene */ }
     renderServiciosAjustes();
     renderServiciosSelect();
     renderHorariosAjustes();
     renderDisabledDays();
-    if(useWeeklyChk) useWeeklyChk.checked = getUseWeekly();
+    useWeeklyChk.checked = getUseWeekly();
     setTodayAsDefault();
     if(isPublicLink){ activarTab("tomar"); }
   </script>
