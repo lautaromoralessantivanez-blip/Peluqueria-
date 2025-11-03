@@ -192,7 +192,6 @@
       .inline-copy{flex-direction:column;align-items:stretch;}
     }
   </style>
-  <!-- Firebase (compat) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
@@ -217,7 +216,7 @@
       <button class="btn btn-primary" style="margin-top:.6rem;" id="saveAdmin">Guardar como admin</button>
     </div>
 
-    <!-- App -->
+    <!-- App principal -->
     <div id="appPanel" class="panel hidden">
       <div id="tabs" class="tabs">
         <button class="tab-btn active" data-tab="tomar">Tomar turno</button>
@@ -299,7 +298,9 @@
   </div>
 
   <script>
+    // ====================
     // Firebase
+    // ====================
     const firebaseConfig = {
       apiKey: "AIzaSyAk5Pn5YJAFbgQtpwjhkZ0MIJ3JtnwLd0M",
       authDomain: "peluqueria-eb0cf.firebaseapp.com",
@@ -312,21 +313,28 @@
     const appFB = firebase.initializeApp(firebaseConfig);
     const db = appFB.firestore();
 
-    // Storage
+    // ====================
+    // STORAGE KEYS
+    // ====================
     const STORAGE_ADMIN = "pelu_admin_phone";
     const STORAGE_ADMIN_CODE = "pelu_admin_code";
     const STORAGE_SERVICIOS = "pelu_servicios";
     const STORAGE_HORARIOS = "pelu_horarios";
-    const STORAGE_TURNOS = "pelu_turnos";
+    const STORAGE_TURNOS_BASE = "pelu_turnos";
 
     const dias = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
 
+    // ====================
+    // URL PARAMS
+    // ====================
     const params = new URLSearchParams(location.search);
     const isPublicLink = params.has("solo");
     const publicCode = params.get("code") || null;
-    const publicAdminParam = params.get("ap") || null; // 👈 viene codificado
+    const publicAdminParam = params.get("ap") || null; // tel codificado
 
-    // Admin phone y code en local
+    // ====================
+    // HELPERS ADMIN
+    // ====================
     function getAdminPhone(){ return localStorage.getItem(STORAGE_ADMIN); }
     function setAdminPhone(p){ localStorage.setItem(STORAGE_ADMIN, p); }
     function getAdminCode(){ return localStorage.getItem(STORAGE_ADMIN_CODE); }
@@ -335,6 +343,38 @@
       return "ADM-" + Math.random().toString(36).substring(2,8).toUpperCase();
     }
 
+    // ====================
+    // STORAGE POR ADMIN
+    // ====================
+    function getTurnosStorageKey(){
+      // si es público usamos el code público
+      if(isPublicLink && publicCode){
+        return `${STORAGE_TURNOS_BASE}_${publicCode}`;
+      }
+      // si estoy en modo admin uso mi code guardado
+      const myCode = getAdminCode();
+      if(myCode){
+        return `${STORAGE_TURNOS_BASE}_${myCode}`;
+      }
+      // fallback viejo
+      return STORAGE_TURNOS_BASE;
+    }
+
+    function getTurnos(){
+      const key = getTurnosStorageKey();
+      const t = localStorage.getItem(key);
+      if(t){ return JSON.parse(t); }
+      return [];
+    }
+
+    function saveTurnos(t){
+      const key = getTurnosStorageKey();
+      localStorage.setItem(key, JSON.stringify(t));
+    }
+
+    // ====================
+    // SERVICIOS / HORARIOS (compartidos)
+    // ====================
     function getServicios(){
       const s = localStorage.getItem(STORAGE_SERVICIOS);
       if(s){ return JSON.parse(s); }
@@ -361,13 +401,9 @@
     }
     function saveHorarios(h){ localStorage.setItem(STORAGE_HORARIOS, JSON.stringify(h)); }
 
-    function getTurnos(){
-      const t = localStorage.getItem(STORAGE_TURNOS);
-      if(t){ return JSON.parse(t); }
-      return [];
-    }
-    function saveTurnos(t){ localStorage.setItem(STORAGE_TURNOS, JSON.stringify(t)); }
-
+    // ====================
+    // ELEMENTOS
+    // ====================
     const registerPanel = document.getElementById("registerPanel");
     const appPanel = document.getElementById("appPanel");
     const adminBadge = document.getElementById("adminBadge");
@@ -379,10 +415,10 @@
     let adminCodeVal = getAdminCode();
     let isAdmin = false;
 
-    // 🔴 ESTE es el número del admin dueño del link público (el que debe recibir el WhatsApp)
+    // número del admin dueño del link público
     let publicAdminPhone = null;
 
-    // 1) primero intentamos decodificarlo del parámetro "ap"
+    // 1) primero intento decodificar tel desde la URL
     if(publicAdminParam){
       try{
         publicAdminPhone = atob(decodeURIComponent(publicAdminParam));
@@ -391,14 +427,14 @@
       }
     }
 
-    // 2) si no vino por la URL, probamos traerlo de Firestore usando el code
+    // 2) si no vino tel en la URL, intento pedirlo a Firestore
     async function loadPublicConfigByCode(code){
       try{
         const doc = await db.collection("admins").doc(code).get();
         if(doc.exists){
           const data = doc.data();
           if(!publicAdminPhone && data.phone){
-            publicAdminPhone = data.phone; // 👈 solo si no vino por URL
+            publicAdminPhone = data.phone;
           }
           if(data.servicios){ saveServicios(data.servicios); }
           if(data.horarios){ saveHorarios(data.horarios); }
@@ -408,7 +444,9 @@
       }
     }
 
-    // MODO PÚBLICO
+    // ====================
+    // INICIALIZACIÓN
+    // ====================
     if(isPublicLink){
       (async ()=>{
         if(publicCode){
@@ -424,10 +462,10 @@
         renderServiciosSelect();
         const todayIso = new Date().toISOString().split("T")[0];
         document.getElementById("fechaTurno").value = todayIso;
-        renderHorariosDisponibles(todayIso);
+        renderHorariosDisponibles(todayIso); // 👉 desde acá ya usa los turnos del code
       })();
     } else {
-      // MODO ADMIN
+      // modo admin
       if(!adminPhoneVal){
         registerPanel.classList.remove("hidden");
         appPanel.classList.add("hidden");
@@ -440,7 +478,9 @@
       }
     }
 
-    // Guardar admin
+    // ====================
+    // GUARDAR ADMIN
+    // ====================
     document.getElementById("saveAdmin").addEventListener("click", async ()=>{
       const val = document.getElementById("adminPhone").value.trim();
       if(!val){ alert("Ingresá un número"); return; }
@@ -450,7 +490,7 @@
         code = generateAdminCode();
         setAdminCode(code);
       }
-      // guardamos en firestore (opcional)
+      // guardo en firestore
       await db.collection("admins").doc(code).set({
         phone: val,
         servicios: getServicios(),
@@ -460,19 +500,25 @@
       location.reload();
     });
 
-    // cerrar sesión
+    // ====================
+    // Cerrar sesión
+    // ====================
     const cerrarSesionBtn = document.getElementById("cerrarSesion");
     if(cerrarSesionBtn){
       cerrarSesionBtn.addEventListener("click", ()=>{
         if(confirm("¿Cerrar sesión de admin?")){
           localStorage.removeItem(STORAGE_ADMIN);
           localStorage.removeItem(STORAGE_ADMIN_CODE);
+          // también podemos limpiar turnos del admin anterior si querés:
+          // localStorage.removeItem(getTurnosStorageKey());
           location.reload();
         }
       });
     }
 
+    // ====================
     // Tabs
+    // ====================
     const tabButtons = document.querySelectorAll(".tab-btn");
     const tabTomar = document.getElementById("tab-tomar");
     const tabTurnos = document.getElementById("tab-turnos");
@@ -482,8 +528,8 @@
 
     if(!isPublicLink){
       if(!isAdmin){
-        if(tabTurnosBtn) tabTurnosBtn.style.display = "none";
-        if(tabAjustesBtn) tabAjustesBtn.style.display = "none";
+        tabTurnosBtn.style.display = "none";
+        tabAjustesBtn.style.display = "none";
       }
     }
 
@@ -516,18 +562,19 @@
 
     const irTomar = document.getElementById("irTomar");
     if(irTomar){
-      irTomar.addEventListener("click",(e)=>{
+      irTomar.addEventListener("click", e=>{
         e.preventDefault();
         activarTab("tomar");
       });
     }
 
+    // ====================
     // Link público (modo admin)
+    // ====================
     if(!isPublicLink){
       const base = location.origin + location.pathname;
       let code = getAdminCode() || "ADM-NO-CODE";
       const phone = getAdminPhone() || "";
-      // 👇 CODIFICAMOS el teléfono en base64 y lo ponemos en la URL
       const phoneB64 = encodeURIComponent(btoa(phone));
       if(publicLinkInput){
         publicLinkInput.value = `${base}?solo=1&code=${encodeURIComponent(code)}&ap=${phoneB64}`;
@@ -545,7 +592,9 @@
       }
     }
 
+    // ====================
     // Servicios
+    // ====================
     const serviciosList = document.getElementById("serviciosList");
     const servicioSelect = document.getElementById("servicioSelect");
 
@@ -603,7 +652,9 @@
       syncAdminConfigToFirestore();
     });
 
+    // ====================
     // Horarios
+    // ====================
     const horariosPorDia = document.getElementById("horariosPorDia");
     const fechaTurno = document.getElementById("fechaTurno");
 
@@ -675,7 +726,9 @@
       setTimeout(()=>{ document.getElementById("msgAjustes").textContent=""; }, 2000);
     });
 
+    // ====================
     // Horarios disponibles
+    // ====================
     const horariosContainer = document.getElementById("horariosContainer");
     let horarioSeleccionado = null;
 
@@ -721,7 +774,7 @@
           start += 30;
         }
       }
-
+      // 🔴 ahora solo traemos turnos del admin ACTUAL
       const turnos = getTurnos().filter(t=>t.fecha===fechaStr);
       const usados = turnos.map(t=>t.hora);
 
@@ -729,9 +782,10 @@
         horariosContainer.innerHTML = `<div class="empty">No hay bloques configurados</div>`;
         return;
       }
+
       bloques.forEach(b=>{
         const btn = document.createElement("button");
-        btn.type="button";
+        btn.type = "button";
         btn.textContent = b;
         btn.style.minWidth="80px";
         btn.style.border="1px solid #ddd";
@@ -741,7 +795,6 @@
         btn.style.cursor="pointer";
         btn.style.fontWeight="600";
         btn.style.color="#333";
-        btn.style.display="inline-block";
         if(usados.includes(b)){
           btn.style.background="rgba(214,40,40,.1)";
           btn.style.color="var(--rojo)";
@@ -764,7 +817,9 @@
       });
     }
 
-    // mostrar link manual al admin (modo admin)
+    // ====================
+    // Notificar (solo admin)
+    // ====================
     function notificarAdmin(turno){
       const admin = getAdminPhone();
       if(!admin) return;
@@ -777,7 +832,9 @@
       }
     }
 
+    // ====================
     // Confirmar turno
+    // ====================
     document.getElementById("confirmarTurno").addEventListener("click", ()=>{
       const nombre = document.getElementById("clienteNombre").value.trim();
       const tel = document.getElementById("clienteTel").value.trim();
@@ -790,13 +847,14 @@
       if(!horarioSeleccionado){ msg.textContent="Elegí un horario disponible."; msg.style.color="red"; return; }
 
       const turnos = getTurnos();
+      // 🔴 si ya hay uno de ESTE admin con esa fecha/hora, no dejo
       if(turnos.some(t=>t.fecha===fecha && t.hora===horarioSeleccionado)){
         msg.textContent="Ese horario ya fue tomado. Elegí otro.";
         msg.style.color="red";
         return;
       }
 
-      const adminLocal = getAdminPhone();   // solo para modo admin
+      const adminLocal = getAdminPhone();   // para modo admin
       const code = isPublicLink ? publicCode : getAdminCode();
 
       const nuevo = {
@@ -810,7 +868,7 @@
         adminCode: code || ""
       };
 
-      // guardo local
+      // guardo solo en turnos del admin actual
       turnos.push(nuevo);
       turnos.sort((a,b)=>{
         if(a.fecha===b.fecha){ return a.hora.localeCompare(b.hora); }
@@ -828,10 +886,10 @@
       renderListaTurnos();
       notificarAdmin(nuevo);
 
-      // guardo en firestore
+      // subo a firestore
       db.collection("turnos").add(nuevo).catch(e=>console.log("Error subiendo turno", e));
 
-      // ✅ ACÁ: solo si es link público y SÍ tenemos el número del admin dueño del link
+      // si es público → ir al WhatsApp del admin de ese link
       if(isPublicLink && publicAdminPhone){
         const limpio = publicAdminPhone.replace(/[^0-9+]/g,"");
         const texto = encodeURIComponent(
@@ -841,7 +899,9 @@
       }
     });
 
-    // Lista de turnos (admin)
+    // ====================
+    // Lista turnos (admin)
+    // ====================
     const listaTurnos = document.getElementById("listaTurnos");
     const agendaFecha = document.getElementById("agendaFecha");
     if(agendaFecha){
@@ -861,7 +921,7 @@
       if(fechaTurno && fechaTurno.value === turnoObj.fecha){
         renderHorariosDisponibles(turnoObj.fecha);
       }
-      // intento borrar en firestore
+      // intento borrar firestore
       db.collection("turnos")
         .where("fecha","==", turnoObj.fecha)
         .where("hora","==", turnoObj.hora)
@@ -902,7 +962,9 @@
       });
     }
 
-    // init
+    // ====================
+    // INIT
+    // ====================
     renderServiciosAjustes();
     renderServiciosSelect();
     renderHorariosAjustes();
