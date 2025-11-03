@@ -192,6 +192,7 @@
       .inline-copy{flex-direction:column;align-items:stretch;}
     }
   </style>
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
@@ -205,7 +206,7 @@
   </header>
 
   <div class="container">
-    <!-- REGISTRO ADMIN -->
+    <!-- Registro admin -->
     <div id="registerPanel" class="panel">
       <h2 style="margin-top:0;font-size:1rem;">Registrar número administrador</h2>
       <p style="font-size:.82rem;color:#555;margin-bottom:.7rem;">
@@ -216,7 +217,7 @@
       <button class="btn btn-primary" style="margin-top:.6rem;" id="saveAdmin">Guardar como admin</button>
     </div>
 
-    <!-- APP -->
+    <!-- App -->
     <div id="appPanel" class="panel hidden">
       <div id="tabs" class="tabs">
         <button class="tab-btn active" data-tab="tomar">Tomar turno</button>
@@ -298,7 +299,9 @@
   </div>
 
   <script>
-    // ====== FIREBASE ======
+    // ====================
+    // Firebase
+    // ====================
     const firebaseConfig = {
       apiKey: "AIzaSyAk5Pn5YJAFbgQtpwjhkZ0MIJ3JtnwLd0M",
       authDomain: "peluqueria-eb0cf.firebaseapp.com",
@@ -311,7 +314,9 @@
     const appFB = firebase.initializeApp(firebaseConfig);
     const db = appFB.firestore();
 
-    // ====== STORAGE KEYS ======
+    // ====================
+    // STORAGE KEYS
+    // ====================
     const STORAGE_ADMIN = "pelu_admin_phone";
     const STORAGE_ADMIN_CODE = "pelu_admin_code";
     const STORAGE_SERVICIOS = "pelu_servicios";
@@ -320,13 +325,17 @@
 
     const dias = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
 
-    // ====== PARAMS ======
+    // ====================
+    // URL PARAMS
+    // ====================
     const params = new URLSearchParams(location.search);
     const isPublicLink = params.has("solo");
     const publicCode = params.get("code") || null;
-    const publicAdminParam = params.get("ap") || null;
+    const publicAdminParam = params.get("ap") || null; // tel codificado
 
-    // ====== HELPERS ADMIN ======
+    // ====================
+    // ADMIN HELPERS
+    // ====================
     function getAdminPhone(){ return localStorage.getItem(STORAGE_ADMIN); }
     function setAdminPhone(p){ localStorage.setItem(STORAGE_ADMIN, p); }
     function getAdminCode(){ return localStorage.getItem(STORAGE_ADMIN_CODE); }
@@ -335,14 +344,16 @@
       return "ADM-" + Math.random().toString(36).substring(2,8).toUpperCase();
     }
 
-    // ====== TURNOS POR ADMIN ======
+    // ====================
+    // TURNOS POR ADMIN (local)
+    // ====================
     function getTurnosStorageKey(){
       if(isPublicLink && publicCode){
         return `${STORAGE_TURNOS_BASE}_${publicCode}`;
       }
-      const code = getAdminCode();
-      if(code){
-        return `${STORAGE_TURNOS_BASE}_${code}`;
+      const myCode = getAdminCode();
+      if(myCode){
+        return `${STORAGE_TURNOS_BASE}_${myCode}`;
       }
       return STORAGE_TURNOS_BASE;
     }
@@ -359,7 +370,9 @@
       localStorage.setItem(key, JSON.stringify(t));
     }
 
-    // ====== SERVICIOS / HORARIOS ======
+    // ====================
+    // SERVICIOS / HORARIOS
+    // ====================
     function getServicios(){
       const s = localStorage.getItem(STORAGE_SERVICIOS);
       if(s){ return JSON.parse(s); }
@@ -386,7 +399,9 @@
     }
     function saveHorarios(h){ localStorage.setItem(STORAGE_HORARIOS, JSON.stringify(h)); }
 
-    // ====== ELEMENTOS ======
+    // ====================
+    // ELEMENTOS
+    // ====================
     const registerPanel = document.getElementById("registerPanel");
     const appPanel = document.getElementById("appPanel");
     const adminBadge = document.getElementById("adminBadge");
@@ -395,21 +410,24 @@
     const copyLinkBtn = document.getElementById("copyLink");
     const listaTurnos = document.getElementById("listaTurnos");
     const agendaFecha = document.getElementById("agendaFecha");
-    const fechaTurno = document.getElementById("fechaTurno");
 
     let adminPhoneVal = getAdminPhone();
     let adminCodeVal = getAdminCode();
     let isAdmin = false;
+
+    // número real del admin dueño del link público
     let publicAdminPhone = null;
 
-    // 1) tel desde URL (cliente)
+    // 1) intento leer tel de la URL
     if(publicAdminParam){
       try{
         publicAdminPhone = atob(decodeURIComponent(publicAdminParam));
-      }catch(e){}
+      }catch(e){
+        publicAdminPhone = null;
+      }
     }
 
-    // traer config por code (cliente)
+    // 2) si no hubo tel, lo busco en Firestore
     async function loadPublicConfigByCode(code){
       try{
         const doc = await db.collection("admins").doc(code).get();
@@ -421,108 +439,89 @@
           if(data.servicios){ saveServicios(data.servicios); }
           if(data.horarios){ saveHorarios(data.horarios); }
         }
-      }catch(e){ console.log("No pude leer admin por code", e); }
+      }catch(e){
+        console.log("No pude leer admin por code", e);
+      }
     }
 
-    // ====== SUSCRIPCIÓN FIRESTORE (admin) ======
+    // ================
+    // SUSCRIPCIÓN FIRESTORE (para admin) 👉 MODIFICADO
+    // ================
     let unsubscribeTurnos = null;
     function suscribirTurnosDeFirestore(adminCode){
       if(!adminCode) return;
-      if(unsubscribeTurnos) unsubscribeTurnos();
-      // tiempo real
-      unsubscribeTurnos = db.collection("turnos")
-        .where("adminCode","==", adminCode)
+      if(unsubscribeTurnos){ unsubscribeTurnos(); }
+      // ahora escuchamos la subcolección propia de ese admin
+      unsubscribeTurnos = db
+        .collection("admins")
+        .doc(adminCode)
+        .collection("turnos")
         .onSnapshot((snap)=>{
-          const arr = [];
-          snap.forEach(doc=>arr.push(doc.data()));
-          arr.sort((a,b)=>{
-            if(a.fecha===b.fecha) return a.hora.localeCompare(b.hora);
+          const turnosFS = [];
+          snap.forEach(doc=>{
+            turnosFS.push(doc.data());
+          });
+          // orden
+          turnosFS.sort((a,b)=>{
+            if(a.fecha===b.fecha){ return a.hora.localeCompare(b.hora); }
             return a.fecha.localeCompare(b.fecha);
           });
-          saveTurnos(arr);
-          renderListaTurnos();
+          // guardo en local
+          saveTurnos(turnosFS);
+          // refresco si está viendo
+          if(agendaFecha && agendaFecha.value){
+            renderListaTurnos();
+          }
+          // refresco horarios disponibles
+          const fechaTurno = document.getElementById("fechaTurno");
           if(fechaTurno && fechaTurno.value){
             renderHorariosDisponibles(fechaTurno.value);
           }
-        }, err=>{
-          console.log("onSnapshot falló, usamos fallback", err);
+        }, (err)=>{
+          console.log("Error escuchando turnos", err);
         });
-
-      // fallback cada 7s por si onSnapshot no llega (reglas)
-      setInterval(async ()=>{
-        try{
-          const snap = await db.collection("turnos").where("adminCode","==", adminCode).get();
-          const arr = [];
-          snap.forEach(doc=>arr.push(doc.data()));
-          arr.sort((a,b)=>{
-            if(a.fecha===b.fecha) return a.hora.localeCompare(b.hora);
-            return a.fecha.localeCompare(b.fecha);
-          });
-          saveTurnos(arr);
-          // solo refresco si estoy en tab turnos
-          const tabTurnosVisible = !document.getElementById("tab-turnos").classList.contains("hidden");
-          if(tabTurnosVisible) renderListaTurnos();
-        }catch(e){}
-      }, 7000);
     }
 
-    // ====== INICIO ======
-    (async function init(){
-      if(isPublicLink){
+    // ====================
+    // INICIALIZACIÓN
+    // ====================
+    if(isPublicLink){
+      (async ()=>{
         if(publicCode){
           await loadPublicConfigByCode(publicCode);
         }
         registerPanel.classList.add("hidden");
         appPanel.classList.remove("hidden");
         adminBadge.style.display = "none";
+        isAdmin = false;
         document.getElementById("tabTurnos").style.display = "none";
         document.getElementById("tabAjustes").style.display = "none";
+
         renderServiciosSelect();
         const todayIso = new Date().toISOString().split("T")[0];
-        fechaTurno.value = todayIso;
+        document.getElementById("fechaTurno").value = todayIso;
         renderHorariosDisponibles(todayIso);
+      })();
+    } else {
+      // modo admin
+      if(!adminPhoneVal){
+        registerPanel.classList.remove("hidden");
+        appPanel.classList.add("hidden");
       } else {
-        // modo admin
-        if(!adminPhoneVal){
-          registerPanel.classList.remove("hidden");
-          appPanel.classList.add("hidden");
-        } else {
-          // ⚠️ acá es donde podía fallar: había teléfono pero NO código
-          if(!adminCodeVal){
-            adminCodeVal = generateAdminCode();
-            setAdminCode(adminCodeVal);
-            // subo config mínima
-            await db.collection("admins").doc(adminCodeVal).set({
-              phone: adminPhoneVal,
-              servicios: getServicios(),
-              horarios: getHorarios(),
-              updated: new Date().toISOString()
-            }, {merge:true});
-          }
-          registerPanel.classList.add("hidden");
-          appPanel.classList.remove("hidden");
-          adminBadge.style.display = "flex";
-          adminPhoneLabel.textContent = "Admin registrado: " + adminPhoneVal;
-          isAdmin = true;
-          // 👇 ahora sí escucho los turnos de MI código
+        registerPanel.classList.add("hidden");
+        appPanel.classList.remove("hidden");
+        adminBadge.style.display = "flex";
+        adminPhoneLabel.textContent = "Admin registrado: " + adminPhoneVal;
+        isAdmin = true;
+        if(adminCodeVal){
           suscribirTurnosDeFirestore(adminCodeVal);
         }
       }
-      renderServiciosAjustes();
-      renderServiciosSelect();
-      renderHorariosAjustes();
-      setTodayAsDefault();
-      if(isPublicLink){ activarTab("tomar"); }
-      // link público (admin)
-      if(!isPublicLink && publicLinkInput){
-        const base = location.origin + location.pathname;
-        const phone = getAdminPhone() || "";
-        const phoneB64 = encodeURIComponent(btoa(phone));
-        publicLinkInput.value = `${base}?solo=1&code=${encodeURIComponent(getAdminCode())}&ap=${phoneB64}`;
-      }
-    })();
+    }
 
-    // ====== GUARDAR ADMIN ======
+    // ====================
+    // GUARDAR ADMIN
+    // ====================
     document.getElementById("saveAdmin").addEventListener("click", async ()=>{
       const val = document.getElementById("adminPhone").value.trim();
       if(!val){ alert("Ingresá un número"); return; }
@@ -538,11 +537,14 @@
         horarios: getHorarios(),
         updated: new Date().toISOString()
       }, {merge:true});
+      // me suscribo
       suscribirTurnosDeFirestore(code);
       location.reload();
     });
 
-    // ====== CERRAR SESIÓN ======
+    // ====================
+    // CERRAR SESIÓN
+    // ====================
     const cerrarSesionBtn = document.getElementById("cerrarSesion");
     if(cerrarSesionBtn){
       cerrarSesionBtn.addEventListener("click", ()=>{
@@ -554,7 +556,9 @@
       });
     }
 
-    // ====== TABS ======
+    // ====================
+    // Tabs
+    // ====================
     const tabButtons = document.querySelectorAll(".tab-btn");
     const tabTomar = document.getElementById("tab-tomar");
     const tabTurnosDiv = document.getElementById("tab-turnos");
@@ -562,9 +566,11 @@
     const tabTurnosBtn = document.getElementById("tabTurnos");
     const tabAjustesBtn = document.getElementById("tabAjustes");
 
-    if(!isPublicLink && !isAdmin){
-      tabTurnosBtn.style.display = "none";
-      tabAjustesBtn.style.display = "none";
+    if(!isPublicLink){
+      if(!isAdmin){
+        tabTurnosBtn.style.display = "none";
+        tabAjustesBtn.style.display = "none";
+      }
     }
 
     function activarTab(nombre){
@@ -579,7 +585,6 @@
       if(nombre==="turnos"){
         document.querySelector('[data-tab="turnos"]').classList.add("active");
         tabTurnosDiv.classList.remove("hidden");
-        renderListaTurnos();
       }
       if(nombre==="ajustes"){
         document.querySelector('[data-tab="ajustes"]').classList.add("active");
@@ -591,6 +596,7 @@
       btn.addEventListener("click", ()=>{
         const tab = btn.dataset.tab;
         activarTab(tab);
+        if(tab==="turnos") renderListaTurnos();
       });
     });
 
@@ -602,20 +608,33 @@
       });
     }
 
-    // ====== COPY LINK ======
-    if(copyLinkBtn){
-      copyLinkBtn.addEventListener("click", async ()=>{
-        try{
-          await navigator.clipboard.writeText(publicLinkInput.value);
-          copyLinkBtn.textContent = "✅ Copiado";
-          setTimeout(()=>copyLinkBtn.textContent="📋 Copiar",1500);
-        }catch(e){
-          alert("Copiá el link manualmente");
-        }
-      });
+    // ====================
+    // Link público (admin)
+    // ====================
+    if(!isPublicLink){
+      const base = location.origin + location.pathname;
+      let code = getAdminCode() || "ADM-NO-CODE";
+      const phone = getAdminPhone() || "";
+      const phoneB64 = encodeURIComponent(btoa(phone));
+      if(publicLinkInput){
+        publicLinkInput.value = `${base}?solo=1&code=${encodeURIComponent(code)}&ap=${phoneB64}`;
+      }
+      if(copyLinkBtn){
+        copyLinkBtn.addEventListener("click", async ()=>{
+          try{
+            await navigator.clipboard.writeText(publicLinkInput.value);
+            copyLinkBtn.textContent = "✅ Copiado";
+            setTimeout(()=>copyLinkBtn.textContent="📋 Copiar", 1600);
+          }catch(e){
+            alert("Copiá el link manualmente");
+          }
+        });
+      }
     }
 
-    // ====== SERVICIOS UI ======
+    // ====================
+    // Servicios
+    // ====================
     const serviciosList = document.getElementById("serviciosList");
     const servicioSelect = document.getElementById("servicioSelect");
 
@@ -673,8 +692,11 @@
       syncAdminConfigToFirestore();
     });
 
-    // ====== HORARIOS UI ======
+    // ====================
+    // Horarios
+    // ====================
     const horariosPorDia = document.getElementById("horariosPorDia");
+    const fechaTurno = document.getElementById("fechaTurno");
 
     function renderHorariosAjustes(){
       const h = getHorarios();
@@ -744,7 +766,9 @@
       setTimeout(()=>{ document.getElementById("msgAjustes").textContent=""; }, 2000);
     });
 
-    // ====== HORARIOS DISPONIBLES ======
+    // ====================
+    // Horarios disponibles
+    // ====================
     const horariosContainer = document.getElementById("horariosContainer");
     let horarioSeleccionado = null;
 
@@ -772,8 +796,6 @@
         horariosContainer.innerHTML = `<div class="empty">Este día no hay horarios habilitados</div>`;
         return;
       }
-      const turnos = getTurnos().filter(t=>t.fecha===fechaStr);
-      const usados = turnos.map(t=>t.hora);
       let bloques = [];
       if(conf.maniana.inicio && conf.maniana.fin){
         let start = timeToMinutes(conf.maniana.inicio);
@@ -791,10 +813,14 @@
           start += 30;
         }
       }
+      const turnos = getTurnos().filter(t=>t.fecha===fechaStr);
+      const usados = turnos.map(t=>t.hora);
+
       if(bloques.length===0){
         horariosContainer.innerHTML = `<div class="empty">No hay bloques configurados</div>`;
         return;
       }
+
       bloques.forEach(b=>{
         const btn = document.createElement("button");
         btn.type="button";
@@ -829,7 +855,9 @@
       });
     }
 
-    // ====== NOTIFICAR ======
+    // ====================
+    // Notificar admin (panel)
+    // ====================
     function notificarAdmin(turno){
       const admin = getAdminPhone();
       if(!admin) return;
@@ -842,8 +870,10 @@
       }
     }
 
-    // ====== CONFIRMAR TURNO ======
-    document.getElementById("confirmarTurno").addEventListener("click", ()=>{
+    // ====================
+    // Confirmar turno 👉 MODIFICADO
+    // ====================
+    document.getElementById("confirmarTurno").addEventListener("click", async ()=>{
       const nombre = document.getElementById("clienteNombre").value.trim();
       const tel = document.getElementById("clienteTel").value.trim();
       const fecha = document.getElementById("fechaTurno").value;
@@ -861,8 +891,8 @@
         return;
       }
 
-      const adminLocal = getAdminPhone();
-      const code = isPublicLink ? (publicCode || "") : (getAdminCode() || "");
+      const adminLocal = getAdminPhone();   // panel
+      const code = isPublicLink ? publicCode : getAdminCode();
 
       const nuevo = {
         fecha,
@@ -872,9 +902,10 @@
         servicio,
         creado: new Date().toISOString(),
         notificarA: isPublicLink ? (publicAdminPhone || "") : (adminLocal || ""),
-        adminCode: code
+        adminCode: code || ""
       };
 
+      // guardo local (cliente o admin que toma)
       turnos.push(nuevo);
       turnos.sort((a,b)=>{
         if(a.fecha===b.fecha){ return a.hora.localeCompare(b.hora); }
@@ -892,10 +923,21 @@
       renderListaTurnos();
       notificarAdmin(nuevo);
 
-      // SUBIR A FIRESTORE
-      db.collection("turnos").add(nuevo).catch(e=>console.log("Error subiendo turno", e));
+      // 🔥 subo a firestore general (por si lo usás en otro lado)
+      db.collection("turnos").add(nuevo).catch(e=>console.log("Error subiendo turno (root)", e));
 
-      // si es público → abrir WhatsApp del admin
+      // 🔥 y sobre todo: lo guardo en la carpeta del admin dueño del link → esto es lo que hace que LE APAREZCA AL INSTANTE
+      if(code){
+        const docId = `${fecha}_${horarioSeleccionado}`.replace(/:/g,"-");
+        db.collection("admins")
+          .doc(code)
+          .collection("turnos")
+          .doc(docId)
+          .set(nuevo)
+          .catch(e=>console.log("Error subiendo turno al admin", e));
+      }
+
+      // si es público → abrir WhatsApp del admin dueño
       if(isPublicLink && publicAdminPhone){
         const limpio = publicAdminPhone.replace(/[^0-9+]/g,"");
         const texto = encodeURIComponent(
@@ -905,40 +947,48 @@
       }
     });
 
-    // ====== LISTA TURNOS (ADMIN) ======
+    // ====================
+    // Lista Turnos (ADMIN)
+    // ====================
     if(agendaFecha){
       agendaFecha.addEventListener("change", ()=>renderListaTurnos());
     }
 
     function eliminarTurno(turnoObj){
       let turnos = getTurnos();
-      turnos = turnos.filter(t=>!(
-        t.fecha === turnoObj.fecha &&
-        t.hora === turnoObj.hora &&
-        t.nombre === turnoObj.nombre &&
-        t.servicio === turnoObj.servicio
-      ));
+      turnos = turnos.filter(t=>!(t.fecha === turnoObj.fecha && t.hora === turnoObj.hora));
       saveTurnos(turnos);
       renderListaTurnos();
       if(fechaTurno && fechaTurno.value === turnoObj.fecha){
         renderHorariosDisponibles(turnoObj.fecha);
       }
-      // borrar en firestore
+      // borrar en firestore root
       db.collection("turnos")
         .where("fecha","==", turnoObj.fecha)
         .where("hora","==", turnoObj.hora)
-        .where("nombre","==", turnoObj.nombre)
         .where("adminCode","==", turnoObj.adminCode || "")
         .get().then(snap=>{
           snap.forEach(doc=>doc.ref.delete().catch(()=>{}));
         });
+
+      // borrar en subcolección del admin
+      const adminCode = getAdminCode();
+      if(adminCode){
+        const docId = `${turnoObj.fecha}_${turnoObj.hora}`.replace(/:/g,"-");
+        db.collection("admins")
+          .doc(adminCode)
+          .collection("turnos")
+          .doc(docId)
+          .delete()
+          .catch(()=>{});
+      }
     }
 
     function renderListaTurnos(){
       if(isPublicLink) return;
       if(!isAdmin) return;
-      const fechaSel = agendaFecha.value;
-      const turnos = getTurnos().filter(t=>t.fecha===fechaSel);
+      const fecha = agendaFecha.value;
+      const turnos = getTurnos().filter(t=>t.fecha===fecha);
       listaTurnos.innerHTML = "";
       if(turnos.length===0){
         listaTurnos.innerHTML = `<div class="empty">No hay turnos para esta fecha.</div>`;
@@ -964,6 +1014,15 @@
         listaTurnos.appendChild(card);
       });
     }
+
+    // ====================
+    // INIT UI
+    // ====================
+    renderServiciosAjustes();
+    renderServiciosSelect();
+    renderHorariosAjustes();
+    setTodayAsDefault();
+    if(isPublicLink){ activarTab("tomar"); }
   </script>
 </body>
 </html>
