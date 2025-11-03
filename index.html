@@ -197,6 +197,27 @@
       margin:.15rem .3rem .15rem 0;
     }
     .row-inline{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;}
+
+    /* 👇 cartel grande para días deshabilitados */
+    .no-attend-banner{
+      background:#ffe5e5;
+      border:2px solid #ff9d9d;
+      border-radius:14px;
+      padding:1rem .8rem;
+      text-align:center;
+      font-weight:700;
+      color:#a00000;
+      font-size:1.05rem;
+      margin-bottom:.8rem;
+    }
+    .no-attend-banner small{
+      display:block;
+      font-weight:400;
+      font-size:.7rem;
+      color:#c22;
+      margin-top:.35rem;
+    }
+
     @media (max-width:720px){
       .tabs{flex-wrap:wrap;}
       header{flex-direction:column;align-items:flex-start;}
@@ -520,7 +541,7 @@
     }
 
     // ================
-    // SUSCRIPCIÓN FIRESTORE (para admin)  (mezclando para no borrar)
+    // SUSCRIPCIÓN FIRESTORE
     // ================
     let unsubscribeTurnos = null;
     function suscribirTurnosDeFirestore(adminCode){
@@ -569,6 +590,8 @@
       (async ()=>{
         if(publicCode){
           await loadPublicConfigByCode(publicCode);
+          // 👇 IMPORTANTE: los clientes que abren el link también escuchan los turnos de ese admin
+          suscribirTurnosDeFirestore(publicCode);
         }
         registerPanel.classList.add("hidden");
         appPanel.classList.remove("hidden");
@@ -929,10 +952,16 @@
       horariosContainer.innerHTML = "";
       horarioSeleccionado = null;
 
-      // si el día está deshabilitado -> mensaje
       const disabledDays = getDisabledDays();
+
+      // 👇 SI EL DÍA ESTÁ DESHABILITADO → cartel grande
       if(disabledDays.includes(fechaStr)){
-        horariosContainer.innerHTML = `<div class="empty">Este día está deshabilitado</div>`;
+        horariosContainer.innerHTML = `
+          <div class="no-attend-banner">
+            HOY NO ATIENDO 👋
+            <small>Este día fue deshabilitado por el administrador.</small>
+          </div>
+        `;
         return;
       }
 
@@ -947,7 +976,12 @@
       const horarios = getHorarios();
       const conf = horarios[dayIdx];
       if(!conf || !conf.enabled){
-        horariosContainer.innerHTML = `<div class="empty">Este día no hay horarios habilitados</div>`;
+        horariosContainer.innerHTML = `
+          <div class="no-attend-banner">
+            HOY NO ATIENDO 👋
+            <small>Este día no tiene horarios habilitados.</small>
+          </div>
+        `;
         return;
       }
       let bloques = [];
