@@ -195,7 +195,6 @@
       .inline-copy{flex-direction:column;align-items:stretch;}
     }
   </style>
-  <!-- Firebase (compat) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
@@ -209,7 +208,6 @@
   </header>
 
   <div class="container">
-    <!-- Registro inicial de admin -->
     <div id="registerPanel" class="panel">
       <h2 style="margin-top:0;font-size:1rem;">Registrar número administrador</h2>
       <p style="font-size:.82rem;color:#555;margin-bottom:.7rem;">
@@ -220,7 +218,6 @@
       <button class="btn btn-primary" style="margin-top:.6rem;" id="saveAdmin">Guardar como admin</button>
     </div>
 
-    <!-- App principal -->
     <div id="appPanel" class="panel hidden">
       <div id="tabs" class="tabs">
         <button class="tab-btn active" data-tab="tomar">Tomar turno</button>
@@ -228,7 +225,6 @@
         <button class="tab-btn" data-tab="ajustes" id="tabAjustes">Ajustes</button>
       </div>
 
-      <!-- TAB TOMAR -->
       <div id="tab-tomar">
         <div class="row">
           <div class="col-6">
@@ -257,7 +253,6 @@
         <p id="linkWhats" style="font-size:.75rem;"></p>
       </div>
 
-      <!-- TAB TURNOS -->
       <div id="tab-turnos" class="hidden">
         <h3 style="margin-top:0;font-size:1rem;">Agenda del día</h3>
         <label>Elegí fecha</label>
@@ -265,7 +260,6 @@
         <div id="listaTurnos"></div>
       </div>
 
-      <!-- TAB AJUSTES -->
       <div id="tab-ajustes" class="hidden">
         <h3 style="margin-top:0;font-size:1rem;">Ajustes</h3>
         <p style="font-size:.7rem;color:#555;">Solo visible para admin.</p>
@@ -291,7 +285,6 @@
           <a href="#" id="irTomar" class="link-inline">➡️ Ir a la pestaña “Tomar turno”</a>
         </p>
 
-        <!-- 🔐 Cerrar sesión / cambiar admin -->
         <div class="section-title" style="margin-top:1.1rem;">Administrador</div>
         <p style="font-size:.7rem;color:#555;">Si querés cambiar el número de admin, cerrá sesión y volvé a entrar.</p>
         <button id="cerrarSesion" class="btn btn-danger" type="button">🔐 Cerrar sesión de admin</button>
@@ -303,9 +296,6 @@
   </div>
 
   <script>
-    // =========================
-    // 1. FIREBASE CONFIG
-    // =========================
     const firebaseConfig = {
       apiKey: "AIzaSyAk5Pn5YJAFbgQtpwjhkZ0MIJ3JtnwLd0M",
       authDomain: "peluqueria-eb0cf.firebaseapp.com",
@@ -319,9 +309,6 @@
     const appFB = firebase.initializeApp(firebaseConfig);
     const db = appFB.firestore();
 
-    // =========================
-    // 2. STORAGE LOCAL
-    // =========================
     const STORAGE_ADMIN = "pelu_admin_phone";
     const STORAGE_ADMIN_CODE = "pelu_admin_code";
     const STORAGE_SERVICIOS = "pelu_servicios";
@@ -330,7 +317,7 @@
     const dias = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
 
     const params = new URLSearchParams(location.search);
-    const isPublicLink = params.has("solo"); // ?solo=1
+    const isPublicLink = params.has("solo");
     const publicCode = params.get("code") || null;
 
     function getAdminPhone(){ return localStorage.getItem(STORAGE_ADMIN); }
@@ -376,28 +363,26 @@
     }
     function saveTurnos(t){ localStorage.setItem(STORAGE_TURNOS, JSON.stringify(t)); }
 
-    // =========================
-    // 3. INICIALIZACIÓN UI
-    // =========================
     const registerPanel = document.getElementById("registerPanel");
     const appPanel = document.getElementById("appPanel");
     const adminBadge = document.getElementById("adminBadge");
     const adminPhoneLabel = document.getElementById("adminPhoneLabel");
     const publicLinkInput = document.getElementById("publicLink");
     const copyLinkBtn = document.getElementById("copyLink");
+
     let adminPhoneVal = getAdminPhone();
     let adminCodeVal = getAdminCode();
     let isAdmin = false;
 
+    // 🔴 ESTE es el teléfono real del admin dueño del link público
+    let publicAdminPhone = null;
+
     async function loadPublicConfigByCode(code){
-      // trae admin por code
       const doc = await db.collection("admins").doc(code).get();
       if(doc.exists){
         const data = doc.data();
-        // guardo local para usar las funciones
         if(data.phone){
-          adminPhoneVal = data.phone;
-          setAdminPhone(data.phone); // lo dejo en localStorage para este navegador
+          publicAdminPhone = data.phone;   // 👈 lo guardo en variable especial
         }
         if(data.servicios){
           saveServicios(data.servicios);
@@ -408,26 +393,23 @@
       }
     }
 
-    // modo público
     if(isPublicLink){
       (async ()=>{
         if(publicCode){
-          // cargo del server el dueño de ese code
           await loadPublicConfigByCode(publicCode);
         }
         registerPanel.classList.add("hidden");
         appPanel.classList.remove("hidden");
         adminBadge.style.display = "none";
         isAdmin = false;
-        // no muestro tabs de admin
         document.getElementById("tabTurnos").style.display = "none";
         document.getElementById("tabAjustes").style.display = "none";
-        // y pongo fecha + horarios
         renderServiciosSelect();
-        renderHorariosDisponibles(new Date().toISOString().split("T")[0]);
+        const todayIso = new Date().toISOString().split("T")[0];
+        document.getElementById("fechaTurno").value = todayIso;
+        renderHorariosDisponibles(todayIso);
       })();
     } else {
-      // modo normal
       if(!adminPhoneVal){
         registerPanel.classList.remove("hidden");
         appPanel.classList.add("hidden");
@@ -440,7 +422,6 @@
       }
     }
 
-    // guardar admin
     document.getElementById("saveAdmin").addEventListener("click", async ()=>{
       const val = document.getElementById("adminPhone").value.trim();
       if(!val){ alert("Ingresá un número"); return; }
@@ -450,7 +431,6 @@
         code = generateAdminCode();
         setAdminCode(code);
       }
-      // guardo en firestore el admin
       await db.collection("admins").doc(code).set({
         phone: val,
         servicios: getServicios(),
@@ -460,7 +440,6 @@
       location.reload();
     });
 
-    // 🔐 CERRAR SESIÓN
     const cerrarSesionBtn = document.getElementById("cerrarSesion");
     if(cerrarSesionBtn){
       cerrarSesionBtn.addEventListener("click", ()=>{
@@ -472,7 +451,6 @@
       });
     }
 
-    // tabs
     const tabButtons = document.querySelectorAll(".tab-btn");
     const tabTomar = document.getElementById("tab-tomar");
     const tabTurnos = document.getElementById("tab-turnos");
@@ -480,9 +458,7 @@
     const tabTurnosBtn = document.getElementById("tabTurnos");
     const tabAjustesBtn = document.getElementById("tabAjustes");
 
-    if(isPublicLink){
-      // ya los ocultamos arriba
-    } else {
+    if(!isPublicLink){
       if(!isAdmin){
         tabTurnosBtn.style.display = "none";
         tabAjustesBtn.style.display = "none";
@@ -524,12 +500,8 @@
       });
     }
 
-    // seteo el link público a mostrar (solo modo admin)
     if(!isPublicLink){
-      let code = getAdminCode();
-      if(!code){
-        code = "ADM-NO-CODE";
-      }
+      let code = getAdminCode() || "ADM-NO-CODE";
       const base = location.origin + location.pathname;
       if(publicLinkInput){
         publicLinkInput.value = `${base}?solo=1&code=${encodeURIComponent(code)}`;
@@ -547,7 +519,6 @@
       }
     }
 
-    // servicios
     const serviciosList = document.getElementById("serviciosList");
     const servicioSelect = document.getElementById("servicioSelect");
     function renderServiciosAjustes(){
@@ -568,7 +539,6 @@
           saveServicios(arr);
           renderServiciosAjustes();
           renderServiciosSelect();
-          // también actualizo en firestore
           syncAdminConfigToFirestore();
         });
         wrap.querySelectorAll("input").forEach(inp=>{
@@ -605,7 +575,6 @@
       syncAdminConfigToFirestore();
     });
 
-    // horarios por día
     const horariosPorDia = document.getElementById("horariosPorDia");
     const fechaTurno = document.getElementById("fechaTurno");
 
@@ -677,7 +646,6 @@
       setTimeout(()=>{ document.getElementById("msgAjustes").textContent=""; },2500);
     });
 
-    // horarios dispo
     const horariosContainer = document.getElementById("horariosContainer");
     let horarioSeleccionado = null;
 
@@ -765,7 +733,6 @@
       });
     }
 
-    // notificar admin (en pantalla, por si no quiere redirigir)
     function notificarAdmin(turno){
       const admin = getAdminPhone();
       if(!admin) return;
@@ -776,8 +743,7 @@
       linkWhats.innerHTML = `📲 <a href="${url}" target="_blank" style="color:var(--celeste);text-decoration:none;">Enviar aviso por WhatsApp al admin</a>`;
     }
 
-    // confirmar turno
-    document.getElementById("confirmarTurno").addEventListener("click", async ()=>{
+    document.getElementById("confirmarTurno").addEventListener("click", ()=>{
       const nombre = document.getElementById("clienteNombre").value.trim();
       const tel = document.getElementById("clienteTel").value.trim();
       const fecha = document.getElementById("fechaTurno").value;
@@ -794,7 +760,7 @@
         return;
       }
 
-      const admin = getAdminPhone(); // este ya viene del admin dueño del code, si es público
+      const adminLocal = getAdminPhone();        // admin del panel (si estoy logueado)
       const code = isPublicLink ? publicCode : getAdminCode();
 
       const nuevo = {
@@ -804,11 +770,10 @@
         tel,
         servicio,
         creado: new Date().toISOString(),
-        notificarA: admin || "",
+        notificarA: isPublicLink ? (publicAdminPhone || "") : (adminLocal || ""),
         adminCode: code || ""
       };
 
-      // guardo local
       turnos.push(nuevo);
       turnos.sort((a,b)=>{
         if(a.fecha===b.fecha){ return a.hora.localeCompare(b.hora); }
@@ -826,12 +791,11 @@
       renderListaTurnos();
       notificarAdmin(nuevo);
 
-      // 🔥 SUBIR A FIRESTORE (con code para identificar de quién es)
       db.collection("turnos").add(nuevo).catch(err=>console.log("Error subiendo turno a Firestore", err));
 
-      // ✅ abrir WhatsApp automáticamente con el admin dueño del link
-      if(admin){
-        const limpio = admin.replace(/[^0-9+]/g,"");
+      // ✅ SOLO si es link público y SÍ tenemos el número del admin dueño
+      if(isPublicLink && publicAdminPhone){
+        const limpio = publicAdminPhone.replace(/[^0-9+]/g,"");
         const texto = encodeURIComponent(
           `Nuevo turno en la peluquería:\nCliente: ${nuevo.nombre}\nFecha: ${nuevo.fecha}\nHora: ${nuevo.hora}\nServicio: ${nuevo.servicio}\nTel cliente: ${nuevo.tel || "sin teléfono"}`
         );
@@ -839,12 +803,10 @@
       }
     });
 
-    // lista turnos (solo modo admin)
     const listaTurnos = document.getElementById("listaTurnos");
     const agendaFecha = document.getElementById("agendaFecha");
     if(agendaFecha) agendaFecha.addEventListener("change", ()=>renderListaTurnos());
 
-    // 🗑 función para eliminar turno
     function eliminarTurno(turnoObj){
       let turnos = getTurnos();
       turnos = turnos.filter(t=>!(
@@ -859,12 +821,10 @@
         renderHorariosDisponibles(turnoObj.fecha);
       }
 
-      // borrar en firestore si hay coincidencia simple
       db.collection("turnos")
         .where("fecha","==", turnoObj.fecha)
         .where("hora","==", turnoObj.hora)
         .where("nombre","==", turnoObj.nombre)
-        .where("adminCode","==", getAdminCode() || turnoObj.adminCode || "")
         .get()
         .then((snap)=>{
           snap.forEach(doc=>{
@@ -904,7 +864,6 @@
       });
     }
 
-    // init
     renderServiciosAjustes();
     renderServiciosSelect();
     renderHorariosAjustes();
