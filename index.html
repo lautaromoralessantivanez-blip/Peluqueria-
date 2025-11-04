@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="utf-8"/>
@@ -197,7 +198,7 @@
     }
     .row-inline{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;}
 
-    /* 👇 cartel grande para días deshabilitados */
+    /* cartel grande para días deshabilitados */
     .no-attend-banner{
       background:#ffe5e5;
       border:2px solid #ff9d9d;
@@ -216,6 +217,16 @@
       color:#c22;
       margin-top:.35rem;
     }
+
+    /* Toggle modo de vista en Turnos */
+    .view-toggle{display:flex;gap:.6rem;align-items:center;margin:.4rem 0 .6rem;}
+    .chip{
+      display:inline-flex;align-items:center;gap:.35rem;
+      padding:.25rem .6rem;border:1px solid #ddd;border-radius:999px;font-size:.78rem;cursor:pointer;
+      background:#fafafa;
+    }
+    .chip input{accent-color:var(--celeste);}
+    .muted{font-size:.72rem;color:#666}
 
     @media (max-width:720px){
       .tabs{flex-wrap:wrap;}
@@ -289,10 +300,26 @@
 
       <!-- TURNOS -->
       <div id="tab-turnos" class="hidden">
-        <h3 style="margin-top:0;font-size:1rem;">Agenda del día</h3>
-        <label>Elegí fecha</label>
-        <input type="date" id="agendaFecha" style="max-width:200px;margin-bottom:.7rem;">
-        <div id="listaTurnos"></div>
+        <h3 style="margin-top:0;font-size:1rem;">Agenda</h3>
+
+        <!-- 🔵 NUEVO: Toggle de vista -->
+        <div class="view-toggle">
+          <label class="chip"><input type="radio" name="viewMode" value="fecha" checked> Por fecha</label>
+          <label class="chip"><input type="radio" name="viewMode" value="proximos"> Próximos</label>
+          <span class="muted">Ver todo lo que viene sin cambiar el día</span>
+        </div>
+
+        <!-- Modo Por fecha -->
+        <div id="view-fecha">
+          <label>Elegí fecha</label>
+          <input type="date" id="agendaFecha" style="max-width:200px;margin-bottom:.7rem;">
+          <div id="listaTurnos"></div>
+        </div>
+
+        <!-- Modo Próximos -->
+        <div id="view-proximos" class="hidden">
+          <div id="listaProximos"></div>
+        </div>
       </div>
 
       <!-- AJUSTES -->
@@ -300,7 +327,6 @@
         <h3 style="margin-top:0;font-size:1rem;">Ajustes</h3>
         <p style="font-size:.7rem;color:#555;">Solo visible para admin.</p>
 
-        <!-- ✅ Switch usar horarios por semana -->
         <div class="row-inline" style="margin-bottom:.6rem;">
           <label style="margin-bottom:0;font-weight:600;">Usar horarios por semana</label>
           <label style="display:flex;align-items:center;gap:.35rem;">
@@ -310,7 +336,6 @@
         </div>
 
         <div class="section-title">Servicios</div>
-        <!-- ✅ fila de botones arriba -->
         <div class="row-inline" style="margin-bottom:.4rem;">
           <button id="agregarServicio" class="btn btn-soft" type="button">+ Agregar servicio</button>
           <button id="guardarServicios" class="btn btn-soft" type="button">💾 Guardar precios</button>
@@ -322,7 +347,6 @@
         <p style="font-size:.7rem;color:#555;">Si un día está vacío o deshabilitado, no se muestran turnos ese día.</p>
         <div id="horariosPorDia" class="day-grid"></div>
 
-        <!-- ✅ Días deshabilitados -->
         <div class="section-title" style="margin-top:1rem;">Días deshabilitados (calendario)</div>
         <div class="row-inline" style="margin-bottom:.4rem;">
           <input type="date" id="disabledDayPicker" style="max-width:200px;">
@@ -383,19 +407,17 @@
     const dias = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
 
     // ====================
-    // URL PARAMS (formato nuevo chico + compatibilidad)
+    // URL PARAMS
     // ====================
     const params = new URLSearchParams(location.search);
-    const tokenParam = params.get("t"); // nuevo formato corto
+    const tokenParam = params.get("t"); // formato corto
     const isPublicLink = params.has("solo") || !!tokenParam;
     const oldPublicCode = params.get("code") || null;
     const oldPublicAdminParam = params.get("ap") || null;
 
-    // vars del link público
     let publicCode = null;
     let publicAdminPhone = null;
 
-    // decodificar formato nuevo
     if(tokenParam){
       try{
         const decoded = JSON.parse(atob(tokenParam));
@@ -406,7 +428,6 @@
         publicAdminPhone = null;
       }
     } else {
-      // compatibilidad vieja
       publicCode = oldPublicCode;
       if(oldPublicAdminParam){
         try{ publicAdminPhone = atob(decodeURIComponent(oldPublicAdminParam)); }catch(e){ publicAdminPhone = null; }
@@ -424,25 +445,18 @@
       return "ADM-" + Math.random().toString(36).substring(2,8).toUpperCase();
     }
 
-    // disabled days
     function getDisabledDays(){
       const d = localStorage.getItem(STORAGE_DISABLED_DAYS);
-      if(d){ return JSON.parse(d); }
-      return [];
+      return d ? JSON.parse(d) : [];
     }
-    function saveDisabledDays(d){
-      localStorage.setItem(STORAGE_DISABLED_DAYS, JSON.stringify(d));
-    }
+    function saveDisabledDays(d){ localStorage.setItem(STORAGE_DISABLED_DAYS, JSON.stringify(d)); }
 
-    // usar semanal
     function getUseWeekly(){
       const v = localStorage.getItem(STORAGE_USE_WEEKLY);
       if(v===null) return true;
       return v==="1";
     }
-    function setUseWeekly(val){
-      localStorage.setItem(STORAGE_USE_WEEKLY, val ? "1" : "0");
-    }
+    function setUseWeekly(val){ localStorage.setItem(STORAGE_USE_WEEKLY, val ? "1" : "0"); }
 
     // ====================
     // TURNOS POR ADMIN (local)
@@ -457,14 +471,11 @@
       }
       return STORAGE_TURNOS_BASE;
     }
-
     function getTurnos(){
       const key = getTurnosStorageKey();
       const t = localStorage.getItem(key);
-      if(t){ return JSON.parse(t); }
-      return [];
+      return t ? JSON.parse(t) : [];
     }
-
     function saveTurnos(t){
       const key = getTurnosStorageKey();
       localStorage.setItem(key, JSON.stringify(t));
@@ -475,8 +486,7 @@
     // ====================
     function getServicios(){
       const s = localStorage.getItem(STORAGE_SERVICIOS);
-      if(s){ return JSON.parse(s); }
-      return [
+      return s ? JSON.parse(s) : [
         {nombre:"Corte caballero", precio:"5000"},
         {nombre:"Corte dama", precio:"7000"},
         {nombre:"Color", precio:"9000"},
@@ -509,6 +519,7 @@
     const publicLinkInput = document.getElementById("publicLink");
     const copyLinkBtn = document.getElementById("copyLink");
     const listaTurnos = document.getElementById("listaTurnos");
+    const listaProximos = document.getElementById("listaProximos");
     const agendaFecha = document.getElementById("agendaFecha");
     const disabledDayPicker = document.getElementById("disabledDayPicker");
     const addDisabledDayBtn = document.getElementById("addDisabledDay");
@@ -520,15 +531,15 @@
     let adminCodeVal = getAdminCode();
     let isAdmin = false;
 
-    // 2) si no hubo tel del público, lo busco en Firestore
+    // ====================
+    // CARGA CONFIG PÚBLICA (una vez)
+    // ====================
     async function loadPublicConfigByCode(code){
       try{
         const doc = await db.collection("admins").doc(code).get();
         if(doc.exists){
           const data = doc.data();
-          if(!publicAdminPhone && data.phone){
-            publicAdminPhone = data.phone;
-          }
+          if(!publicAdminPhone && data.phone){ publicAdminPhone = data.phone; }
           if(data.servicios){ saveServicios(data.servicios); }
           if(data.horarios){ saveHorarios(data.horarios); }
           if(Array.isArray(data.disabledDays)){ saveDisabledDays(data.disabledDays); }
@@ -539,9 +550,9 @@
       }
     }
 
-    // ================
-    // SUSCRIPCIÓN FIRESTORE
-    // ================
+    // ====================
+    // SUSCRIPCIONES FIRESTORE
+    // ====================
     let unsubscribeTurnos = null;
     function suscribirTurnosDeFirestore(adminCode){
       if(!adminCode) return;
@@ -552,34 +563,47 @@
         .collection("turnos")
         .onSnapshot((snap)=>{
           const turnosFS = [];
-          snap.forEach(doc=>{
-            turnosFS.push(doc.data());
-          });
+          snap.forEach(doc=> turnosFS.push(doc.data()));
           const turnosLocal = getTurnos();
           const mezcla = [...turnosLocal];
           turnosFS.forEach(fst=>{
             const idx = mezcla.findIndex(x => x.fecha === fst.fecha && x.hora === fst.hora);
-            if(idx >= 0){
-              mezcla[idx] = fst;
-            } else {
-              mezcla.push(fst);
-            }
+            if(idx >= 0){ mezcla[idx] = fst; } else { mezcla.push(fst); }
           });
-          mezcla.sort((a,b)=>{
-            if(a.fecha===b.fecha){ return a.hora.localeCompare(b.hora); }
-            return a.fecha.localeCompare(b.fecha);
-          });
+          mezcla.sort((a,b)=> a.fecha===b.fecha ? a.hora.localeCompare(b.hora) : a.fecha.localeCompare(b.fecha));
           saveTurnos(mezcla);
-          if(agendaFecha && agendaFecha.value){
-            renderListaTurnos();
+
+          // Render en ambas vistas
+          if(agendaFecha && agendaFecha.value){ renderListaTurnos(); }
+          renderListaProximos();
+          const f = document.getElementById("fechaTurno");
+          if(f && f.value){ renderHorariosDisponibles(f.value); }
+        }, (err)=> console.log("Error escuchando turnos", err));
+    }
+
+    // 🔴 suscripción en tiempo real a la CONFIG del admin
+    let unsubscribeConfig = null;
+    function suscribirConfigDeFirestore(adminCode){
+      if(!adminCode) return;
+      if(unsubscribeConfig){ unsubscribeConfig(); }
+      unsubscribeConfig = db
+        .collection("admins")
+        .doc(adminCode)
+        .onSnapshot((doc)=>{
+          if(!doc.exists) return;
+          const data = doc.data() || {};
+          if(data.servicios){ saveServicios(data.servicios); }
+          if(data.horarios){ saveHorarios(data.horarios); }
+          if(Array.isArray(data.disabledDays)){ saveDisabledDays(data.disabledDays); }
+          if(typeof data.useWeekly === "boolean"){ setUseWeekly(data.useWeekly); }
+
+          // re-render
+          const f = document.getElementById("fechaTurno");
+          if(f && f.value){
+            renderServiciosSelect();
+            renderHorariosDisponibles(f.value);
           }
-          const fechaTurno = document.getElementById("fechaTurno");
-          if(fechaTurno && fechaTurno.value){
-            renderHorariosDisponibles(fechaTurno.value);
-          }
-        }, (err)=>{
-          console.log("Error escuchando turnos", err);
-        });
+        }, (err)=> console.log("Error escuchando config", err));
     }
 
     // ====================
@@ -589,8 +613,8 @@
       (async ()=>{
         if(publicCode){
           await loadPublicConfigByCode(publicCode);
-          // 👇 IMPORTANTE: los clientes que abren el link también escuchan los turnos de ese admin
           suscribirTurnosDeFirestore(publicCode);
+          suscribirConfigDeFirestore(publicCode);
         }
         registerPanel.classList.add("hidden");
         appPanel.classList.remove("hidden");
@@ -617,6 +641,7 @@
         isAdmin = true;
         if(adminCodeVal){
           suscribirTurnosDeFirestore(adminCodeVal);
+          suscribirConfigDeFirestore(adminCodeVal);
         }
       }
     }
@@ -642,6 +667,7 @@
         updated: new Date().toISOString()
       }, {merge:true});
       suscribirTurnosDeFirestore(code);
+      suscribirConfigDeFirestore(code);
       location.reload();
     });
 
@@ -688,6 +714,9 @@
       if(nombre==="turnos"){
         document.querySelector('[data-tab="turnos"]').classList.add("active");
         tabTurnosDiv.classList.remove("hidden");
+        // refrescar ambos modos al abrir
+        renderListaTurnos();
+        renderListaProximos();
       }
       if(nombre==="ajustes"){
         document.querySelector('[data-tab="ajustes"]').classList.add("active");
@@ -699,7 +728,6 @@
       btn.addEventListener("click", ()=>{
         const tab = btn.dataset.tab;
         activarTab(tab);
-        if(tab==="turnos") renderListaTurnos();
       });
     });
 
@@ -710,6 +738,27 @@
         activarTab("tomar");
       });
     }
+
+    // ====================
+    // Toggle vista Turnos
+    // ====================
+    const viewFecha = document.getElementById("view-fecha");
+    const viewProximos = document.getElementById("view-proximos");
+    document.querySelectorAll('input[name="viewMode"]').forEach(r=>{
+      r.addEventListener("change", ()=>{
+        if(r.checked){
+          if(r.value==="fecha"){
+            viewFecha.classList.remove("hidden");
+            viewProximos.classList.add("hidden");
+            renderListaTurnos();
+          }else{
+            viewProximos.classList.remove("hidden");
+            viewFecha.classList.add("hidden");
+            renderListaProximos();
+          }
+        }
+      });
+    });
 
     // ====================
     // Link público (admin) → formato corto
@@ -776,7 +825,6 @@
       });
     }
 
-    // ✅ nuevo botón "Guardar precios"
     if(guardarServiciosBtn){
       guardarServiciosBtn.addEventListener("click", async ()=>{
         await syncAdminConfigToFirestore();
@@ -861,7 +909,7 @@
       });
     }
 
-    // ✅ dias deshabilitados UI
+    // Días deshabilitados UI
     function renderDisabledDays(){
       const arr = getDisabledDays();
       disabledDaysList.innerHTML = "";
@@ -888,16 +936,13 @@
         const val = disabledDayPicker.value;
         if(!val) return;
         const arr = getDisabledDays();
-        if(!arr.includes(val)){
-          arr.push(val);
-        }
+        if(!arr.includes(val)){ arr.push(val); }
         saveDisabledDays(arr);
         renderDisabledDays();
         syncAdminConfigToFirestore();
       });
     }
 
-    // ✅ switch usar semanal
     if(useWeeklyChk){
       useWeeklyChk.checked = getUseWeekly();
       useWeeklyChk.addEventListener("change", ()=>{
@@ -934,15 +979,6 @@
     const horariosContainer = document.getElementById("horariosContainer");
     let horarioSeleccionado = null;
 
-    function setTodayAsDefault(){
-      const today = new Date();
-      const iso = today.toISOString().split("T")[0];
-      if(fechaTurno) fechaTurno.value = iso;
-      if(agendaFecha) agendaFecha.value = iso;
-      renderHorariosDisponibles(iso);
-      renderListaTurnos();
-    }
-
     function timeToMinutes(t){ const [h,m] = t.split(":").map(Number); return h*60+m; }
     function minutesToTime(m){ const h = Math.floor(m/60); const min = m%60; return String(h).padStart(2,"0")+":"+String(min).padStart(2,"0"); }
 
@@ -953,7 +989,6 @@
 
       const disabledDays = getDisabledDays();
 
-      // 👇 SI EL DÍA ESTÁ DESHABILITADO → cartel grande
       if(disabledDays.includes(fechaStr)){
         horariosContainer.innerHTML = `
           <div class="no-attend-banner">
@@ -974,6 +1009,7 @@
       const dayIdx = (date.getDay()+6)%7;
       const horarios = getHorarios();
       const conf = horarios[dayIdx];
+
       if(!conf || !conf.enabled){
         horariosContainer.innerHTML = `
           <div class="no-attend-banner">
@@ -983,6 +1019,7 @@
         `;
         return;
       }
+
       let bloques = [];
       if(conf.maniana.inicio && conf.maniana.fin){
         let start = timeToMinutes(conf.maniana.inicio);
@@ -1000,6 +1037,7 @@
           start += 30;
         }
       }
+
       const turnos = getTurnos().filter(t=>t.fecha===fechaStr);
       const usados = turnos.map(t=>t.hora);
 
@@ -1070,19 +1108,16 @@
       if(!nombre){ msg.textContent="Poné el nombre del cliente."; msg.style.color="red"; return; }
       if(!fecha){ msg.textContent="Elegí la fecha."; msg.style.color="red"; return; }
 
-      // no dejar si está deshabilitado
       if(getDisabledDays().includes(fecha)){
         msg.textContent="Ese día está deshabilitado.";
         msg.style.color="red";
         return;
       }
-
       if(!getUseWeekly()){
         msg.textContent="La agenda está desactivada.";
         msg.style.color="red";
         return;
       }
-
       if(!horarioSeleccionado){ msg.textContent="Elegí un horario disponible."; msg.style.color="red"; return; }
 
       const turnos = getTurnos();
@@ -1092,7 +1127,7 @@
         return;
       }
 
-      const adminLocal = getAdminPhone();   // panel
+      const adminLocal = getAdminPhone();
       const code = isPublicLink ? publicCode : getAdminCode();
 
       const nuevo = {
@@ -1108,10 +1143,7 @@
 
       // guardo local
       turnos.push(nuevo);
-      turnos.sort((a,b)=>{
-        if(a.fecha===b.fecha){ return a.hora.localeCompare(b.hora); }
-        return a.fecha.localeCompare(b.fecha);
-      });
+      turnos.sort((a,b)=> a.fecha===b.fecha ? a.hora.localeCompare(b.hora) : a.fecha.localeCompare(b.fecha));
       saveTurnos(turnos);
 
       msg.style.color="green";
@@ -1122,9 +1154,10 @@
 
       renderHorariosDisponibles(fecha);
       renderListaTurnos();
+      renderListaProximos(); // 🔵 actualizar lista de próximos
       notificarAdmin(nuevo);
 
-      // root
+      // Firestore root (opcional)
       db.collection("turnos").add(nuevo).catch(e=>console.log("Error subiendo turno (root)", e));
 
       // subcolección del admin
@@ -1138,7 +1171,7 @@
           .catch(e=>console.log("Error subiendo turno al admin", e));
       }
 
-      // si es público → abrir WhatsApp del admin dueño
+      // público → abrir WhatsApp del admin dueño
       if(isPublicLink && publicAdminPhone){
         const limpio = publicAdminPhone.replace(/[^0-9+]/g,"");
         const texto = encodeURIComponent(
@@ -1149,7 +1182,7 @@
     });
 
     // ====================
-    // Lista Turnos (ADMIN)
+    // Lista Turnos (ADMIN) — Por fecha
     // ====================
     if(agendaFecha){
       agendaFecha.addEventListener("change", ()=>renderListaTurnos());
@@ -1160,10 +1193,11 @@
       turnos = turnos.filter(t=>!(t.fecha === turnoObj.fecha && t.hora === turnoObj.hora));
       saveTurnos(turnos);
       renderListaTurnos();
+      renderListaProximos();
       if(fechaTurno && fechaTurno.value === turnoObj.fecha){
         renderHorariosDisponibles(turnoObj.fecha);
       }
-      // borrar en firestore root
+      // borrar en firestore root (best effort)
       db.collection("turnos")
         .where("fecha","==", turnoObj.fecha)
         .where("hora","==", turnoObj.hora)
@@ -1208,23 +1242,88 @@
         `;
         const btn = card.querySelector("button");
         btn.addEventListener("click", ()=>{
-          if(confirm("¿Eliminar este turno?")){
-            eliminarTurno(t);
-          }
+          if(confirm("¿Eliminar este turno?")){ eliminarTurno(t); }
         });
         listaTurnos.appendChild(card);
       });
     }
 
     // ====================
+    // 🔵 NUEVO: Lista de Próximos (futuros)
+    // ====================
+    function hoyISO(){
+      const d = new Date();
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      const dd = String(d.getDate()).padStart(2,'0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    function renderListaProximos(){
+      if(isPublicLink) return;
+      if(!isAdmin) return;
+      const today = hoyISO();
+      const turnos = getTurnos()
+        .filter(t => t.fecha >= today) // todos los futuros (incluye hoy)
+        .sort((a,b)=> a.fecha===b.fecha ? a.hora.localeCompare(b.hora) : a.fecha.localeCompare(b.fecha));
+
+      listaProximos.innerHTML = "";
+      if(turnos.length===0){
+        listaProximos.innerHTML = `<div class="empty">No hay turnos futuros.</div>`;
+        return;
+      }
+
+      // Agrupar por fecha
+      let currentDate = null;
+      let groupWrap = null;
+
+      turnos.forEach(t=>{
+        if(t.fecha !== currentDate){
+          currentDate = t.fecha;
+          const h = document.createElement("h4");
+          h.textContent = `📅 ${currentDate}`;
+          h.style.margin = ".9rem 0 .4rem";
+          h.style.fontSize = ".95rem";
+          h.style.color = "#333";
+          listaProximos.appendChild(h);
+        }
+        const card = document.createElement("div");
+        card.className = "turno-card";
+        card.innerHTML = `
+          <div class="turno-info">
+            <span class="hora-badge">🕒 ${t.hora}</span>
+            <strong>${t.nombre}</strong>
+            <small>${t.servicio}${t.tel?(" • " + t.tel):""}</small>
+          </div>
+          <button class="btn btn-danger" type="button">🗑 Eliminar</button>
+        `;
+        card.querySelector("button").addEventListener("click", ()=>{
+          if(confirm("¿Eliminar este turno?")){ eliminarTurno(t); }
+        });
+        listaProximos.appendChild(card);
+      });
+    }
+
+    // ====================
     // INIT UI
     // ====================
+    function setTodayAsDefaultOnce(){
+      const todayIso = new Date().toISOString().split("T")[0];
+      const f = document.getElementById("fechaTurno");
+      const a = document.getElementById("agendaFecha");
+      if(f) f.value = todayIso;
+      if(a) a.value = todayIso;
+    }
+
     renderServiciosAjustes();
     renderServiciosSelect();
     renderHorariosAjustes();
     renderDisabledDays();
     useWeeklyChk.checked = getUseWeekly();
-    setTodayAsDefault();
+    setTodayAsDefaultOnce();
+    renderHorariosDisponibles(document.getElementById("fechaTurno").value);
+    renderListaTurnos();
+    renderListaProximos();
     if(isPublicLink){ activarTab("tomar"); }
   </script>
 </body>
